@@ -75,15 +75,9 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
     Q, p, G, h, A, b = [Variable(x) for x in [Q, p, G, h, A, b]]
     for x in [Q, p, G, h, A, b]: x.requires_grad = True
 
-    # Q_LU, S_LU, R = aip.pre_factor_kkt_batch(Q, G, A, nBatch)
-    # b = torch.mv(A, z0) if neq > 0 else None
-    # h = torch.mv(G, z0)+s0
-    # zhat_b, nu_b, lam_b = aip.forward_batch(p, Q, G, A, b, h, Q_LU, S_LU, R)
-
     zhats = qpth.QPFunction()(p, Q, G, h, A, b)
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)
-    # dp, dL, dG, dA, dz0, ds0 = [x.grad.clone() for x in [p, L, G, A, z0, s0]]
     return [x.grad.data.cpu().numpy() for x in [Q, p, G, h, A, b]]
 
 def test_dl_dp():
