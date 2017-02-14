@@ -88,7 +88,7 @@ def forward(inputs_i, Q, G, A, b, h, U_Q, U_S, R):
 
 def get_step(v,dv):
     I = dv < 0
-    if torch.sum(I) > 0: # TODO: Use something like torch.any(dv < 0)
+    if torch.sum(I) > 1e-12: # TODO: Use something like torch.any(dv < 0)
         a = -v/dv
         return torch.min(a[I])
     else:

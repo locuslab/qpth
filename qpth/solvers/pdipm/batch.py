@@ -154,7 +154,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
 def get_step(v,dv):
     nBatch = v.size(0)
     a = -v/dv
-    a[dv >= 0] = a.max()
+    a[dv >= 1e-12] = a.max()
     return a.min(1)[0].squeeze()
 
 def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
