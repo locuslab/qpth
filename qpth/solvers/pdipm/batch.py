@@ -1,4 +1,5 @@
 import torch
+import sys
 from qpth.util import get_sizes
 
 def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
@@ -53,7 +54,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         y_resid = torch.norm(ry, 2, 1).squeeze() if neq > 0 else 0
         pri_resid = y_resid + z_resid
         dual_resid = torch.norm(rx, 2, 1).squeeze()
-        resids = pri_resid+dual_resid
+        resids = pri_resid + dual_resid + nineq*mu
         if best['resids'] is None:
             best['resids'] = resids
             best['x'] = x.clone()
@@ -77,7 +78,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
         d = z/s
-        if nNotImproved == 3 or best['resids'].max() < 1e-6:
+        if nNotImproved == 3 or best['resids'].max() < 1e-12:
             return best['x'], best['y'], best['z'], best['s']
 
         # L_Q, L_S, R_ = pre_factor_kkt(Q, G, A)
@@ -87,6 +88,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         factor_kkt(S_LU, R, d)
         dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
             Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+
         # D = diaged(d)
         # dx_aff1, ds_aff1, dz_aff1, dy_aff1 = factor_solve_kkt(
         #     Q, D, G, A, rx, rs, rz, ry)
@@ -129,10 +131,13 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         ds = ds_aff + ds_cor
         dz = dz_aff + dz_cor
         dy = dy_aff + dy_cor if neq > 0 else None
-        # alpha0 = min(1.0, 0.999*min(get_step(s[0],ds[0]), get_step(z[0],dz[0])))
+        import qpth.solvers.pdipm.single as pdipm_s
+        alpha0 = min(1.0, 0.999*min(pdipm_s.get_step(s[0],ds[0]), pdipm_s.get_step(z[0],dz[0])))
         alpha = torch.min(0.999*torch.min(get_step(z, dz),
                                           get_step(s, ds)),
                           torch.ones(nBatch).type_as(Q))
+        assert(alpha0 - alpha[0] <= 1e-10) # TODO: Remove
+
         alpha_nineq = alpha.repeat(nineq, 1).t()
         alpha_neq = alpha.repeat(neq, 1).t() if neq > 0 else None
         alpha_nz = alpha.repeat(nz, 1).t()
@@ -154,7 +159,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
 def get_step(v,dv):
     nBatch = v.size(0)
     a = -v/dv
-    a[dv >= 1e-12] = a.max()
+    a[dv >= 1e-12] = max(1.0, a.max())
     return a.min(1)[0].squeeze()
 
 def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):

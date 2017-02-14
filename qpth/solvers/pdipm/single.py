@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 
+from qpth.util import get_sizes
+
 # TODO: Add more comments describing the math here.
 # https://stanford.edu/~boyd/papers/pdf/code_gen_impl.pdf
 
@@ -10,7 +12,7 @@ def forward(inputs_i, Q, G, A, b, h, U_Q, U_S, R):
     h = G z_0 + s_0
     U_Q, U_S, R = pre_factor_kkt(Q, G, A, nineq, neq)
     """
-    nineq, nz, neq, _ = getSizes(G, A)
+    nineq, nz, neq, _ = get_sizes(G, A)
 
     # find initial values
     d = torch.ones(nineq).type_as(Q)
@@ -39,11 +41,11 @@ def forward(inputs_i, Q, G, A, b, h, U_Q, U_S, R):
         mu = torch.dot(s,z)/nineq
         pri_resid = torch.norm(ry) + torch.norm(rz)
         dual_resid = torch.norm(rx)
-        resid = pri_resid+dual_resid
+        resid = pri_resid+dual_resid+nineq*mu
         d = z/s
-        # print(("primal_res = {0:.5g}, dual_res = {1:.5g}, " +
-        #         "gap = {2:.5g}, kappa(d) = {3:.5g}").format(
-        #             pri_resid, dual_resid, mu, min(d)/max(d)))
+        print(("primal_res = {0:.5g}, dual_res = {1:.5g}, " +
+                "gap = {2:.5g}, kappa(d) = {3:.5g}").format(
+                    pri_resid, dual_resid, mu, min(d)/max(d)))
         # if (pri_resid < 5e-4 and dual_resid < 5e-4 and mu < 4e-4):
         improved = (prev_resid is None) or (resid < prev_resid + 1e-6)
         if not improved or resid < 1e-6:
@@ -87,8 +89,8 @@ def forward(inputs_i, Q, G, A, b, h, U_Q, U_S, R):
     return x, y, z
 
 def get_step(v,dv):
-    I = dv < 0
-    if torch.sum(I) > 1e-12: # TODO: Use something like torch.any(dv < 0)
+    I = dv < 1e-12
+    if torch.sum(I) > 0: # TODO: Use something like torch.any(dv < 0)
         a = -v/dv
         return torch.min(a[I])
     else:
@@ -96,7 +98,7 @@ def get_step(v,dv):
 
 def solve_kkt(U_Q, d, G, A, U_S, rx, rs, rz, ry, dbg=False):
     """ Solve KKT equations for the affine step"""
-    nineq, nz, neq, _ = getSizes(G, A)
+    nineq, nz, neq, _ = get_sizes(G, A)
 
     invQ_rx = torch.potrs(rx.view(-1,1), U_Q).view(-1)
     if neq > 0:
@@ -125,7 +127,7 @@ def solve_kkt(U_Q, d, G, A, U_S, rx, rs, rz, ry, dbg=False):
 
 def pre_factor_kkt(Q, G, A):
     """ Perform all one-time factorizations and cache relevant matrix products"""
-    nineq, nz, neq, _ = getSizes(G, A)
+    nineq, nz, neq, _ = get_sizes(G, A)
 
     # S = [ A Q^{-1} A^T        A Q^{-1} G^T           ]
     #     [ G Q^{-1} A^T        G Q^{-1} G^T + D^{-1} ]
@@ -163,7 +165,7 @@ def factor_kkt(U_S, R, d):
     U_S[-nineq:,-nineq:] = torch.potrf(R + torch.diag(1/d.cpu()).type_as(d))
 
 def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
-    nineq, nz, neq, _ = getSizes(G, A)
+    nineq, nz, neq, _ = get_sizes(G, A)
 
     if neq > 0:
         H_ = torch.cat([torch.cat([Q, torch.zeros(nz,nineq).type_as(Q)], 1),
