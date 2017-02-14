@@ -32,9 +32,9 @@ import qpth.solvers.cvxpy as qp_cvxpy
 import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
 
-# from IPython.core import ultratb
-# sys.excepthook = ultratb.FormattedTB(mode='Verbose',
-#      color_scheme='Linux', call_pdb=1)
+from IPython.core import ultratb
+sys.excepthook = ultratb.FormattedTB(mode='Verbose',
+     color_scheme='Linux', call_pdb=1)
 
 ATOL=1e-2
 RTOL=1e-4
@@ -75,13 +75,22 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
     Q, p, G, h, A, b = [Variable(x) for x in [Q, p, G, h, A, b]]
     for x in [Q, p, G, h, A, b]: x.requires_grad = True
 
+    nBatch = 1
+    h.data = h.data.unsqueeze(0).repeat(nBatch,1)
+    Q.data, G.data = [x.data.unsqueeze(0).repeat(nBatch,1,1) for x in [Q, G]]
+    p.data = p.data.repeat(nBatch, 1)
+    if b.nelement() > 0:
+        b.data = b.data.unsqueeze(0).repeat(nBatch,1)
+        A.data = A.data.unsqueeze(0).repeat(nBatch,1,1)
+
     zhats = qpth.QPFunction()(p, Q, G, h, A, b)
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)
-    return [x.grad.data.cpu().numpy() for x in [Q, p, G, h, A, b]]
+    return [x.grad.data.squeeze(0).cpu().numpy() if x.nelement() > 0 else None \
+            for x in [Q, p, G, h, A, b]]
 
 def test_dl_dp():
-    nz, neq, nineq = 10, 1, 3
+    nz, neq, nineq = 10, 2, 3
     [p, Q, G, h, A, b, truez], [dQ, dp, dG, dh, dA, db] = get_grads(
         nz=nz, neq=neq, nineq=nineq, Qscale=100., Gscale=100., Ascale=100.)
 
@@ -94,7 +103,7 @@ def test_dl_dp():
     if verbose:
         print('dp_fd: ', dp_fd)
         print('dp: ', dp)
-    npt.assert_allclose(dp_fd, dp[0], rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(dp_fd, dp, rtol=RTOL, atol=ATOL)
 
 def test_dl_dG():
     nz, neq, nineq = 10, 0, 3
@@ -169,7 +178,6 @@ def test_dl_db():
 
 
 if __name__=='__main__':
-    # test_ip_forward()
     test_dl_dp()
     test_dl_dG()
     test_dl_dh()

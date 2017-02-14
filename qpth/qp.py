@@ -24,14 +24,19 @@ import qpth.solvers.pdipm.batch as pdipm_b
 class QPFunction(Function):
     def forward(self, inputs, Q, G, h, A, b):
         start = time.time()
-        nineq, nz = G.size()
-        neq = A.size(0) if A.ndimension() > 0 else 0
+        assert Q.ndimension() == 3
+        assert G.ndimension() == 3
+        assert h.ndimension() == 2
+        assert A.ndimension() in (0, 3)
+        assert b.ndimension() in (0, 2)
+        nBatch, nineq, nz = G.size()
+        neq = A.size(1) if A.ndimension() > 0 else 0
         assert(neq > 0 or nineq > 0)
         assert(inputs.dim() == 2)
-        nBatch, nz = inputs.size()
+        # nBatch, nz = inputs.size()
         self.neq, self.nineq, self.nz = neq, nineq, nz
 
-        self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A, nBatch)
+        self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
 
         zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
             inputs, Q, G, h, A, b, self.Q_LU, self.S_LU, self.R)
@@ -147,12 +152,11 @@ class QPFunction(Function):
         print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
         return zhats
 
+# class QPLayer(Module):
+#     def __init__(self, Q, G, h, A, b):
+#         super(QPLayer, self).__init__()
+#         self.Q, self.G, self.h, self.A, self.b = \
+#             [Parameter(x) for x in [Q, G, h, A, b]]
 
-class QPLayer(Module):
-    def __init__(self, Q, G, h, A, b):
-        super(QPLayer, self).__init__()
-        self.Q, self.G, self.h, self.A, self.b = \
-            [Parameter(x) for x in [Q, G, h, A, b]]
-
-    def forward(self, inputs):
-        return QPFunction()(inputs, self.Q, self.p, self.G, self.h, self.A, self.b)
+#     def forward(self, inputs):
+#         return QPFunction()(inputs, self.Q, self.p, self.G, self.h, self.A, self.b)

@@ -4,11 +4,9 @@ from qpth.util import get_sizes
 
 def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
     """
-    b = A z_0
-    h = G z_0 + s_0
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
-    nineq, nz, neq, nBatch = get_sizes(G, A, inputs)
+    nineq, nz, neq, nBatch = get_sizes(G, A)
 
     # Find initial values
     d = torch.ones(nBatch,nineq).type_as(Q)
@@ -16,8 +14,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
     x, s, z, y = solve_kkt(
         Q_LU, d, G, A, S_LU,
         inputs, torch.zeros(nBatch, nineq).type_as(Q),
-        -h.unsqueeze(0).expand(nBatch, nineq),
-        -b.unsqueeze(0).expand(nBatch, neq) if neq > 0 else None)
+        -h, -b if neq > 0 else None)
     # D = torch.eye(nineq).repeat(nBatch, 1, 1).type_as(Q)
     # x1, s1, z1, y1 = factor_solve_kkt(
     #     Q, D, G, A,
@@ -44,11 +41,13 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
 
     for i in range(20):
         # affine scaling direction
-        rx = (torch.mm(y, A) if neq > 0 else 0.) + \
-             torch.mm(z, G) + torch.mm(x, Q.t()) + inputs
+        rx = (torch.bmm(y.unsqueeze(1), A).squeeze(1) if neq > 0 else 0.) + \
+             torch.bmm(z.unsqueeze(1), G).squeeze(1) + \
+             torch.bmm(x.unsqueeze(1), Q.transpose(1,2)).squeeze(1) + \
+             inputs
         rs = z
-        rz = torch.mm(x, G.t()) + s - h.repeat(nBatch, 1)
-        ry = torch.mm(x, A.t()) - b.repeat(nBatch, 1) if neq > 0 else 0.0
+        rz = torch.bmm(x.unsqueeze(1), G.transpose(1, 2)).squeeze(1) + s - h
+        ry = torch.bmm(x.unsqueeze(1), A.transpose(1,2)).squeeze(1) - b if neq > 0 else 0.0
         mu = (s*z).sum(1).squeeze()/nineq
         z_resid = torch.norm(rz, 2, 1).squeeze()
         y_resid = torch.norm(ry, 2, 1).squeeze() if neq > 0 else 0
@@ -163,7 +162,7 @@ def get_step(v,dv):
     return a.min(1)[0].squeeze()
 
 def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
-    nineq, nz, neq, nBatch = get_sizes(G, A, rx)
+    nineq, nz, neq, nBatch = get_sizes(G, A)
 
     if neq > 0:
         # import IPython, sys; IPython.embed(); sys.exit(-1)
@@ -212,41 +211,36 @@ def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
 
     return dx, ds, dz, dy
 
-def solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry, dbg=False):
+def solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry):
     """ Solve KKT equations for the affine step"""
-    nineq, nz, neq, nBatch = get_sizes(G, A, rx)
+    nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    invQ_rx = rx.t().unsqueeze(0).btrs(Q_LU.unsqueeze(0)).squeeze(0).t()
-    # if rs.norm()+rz.norm()+ry.norm() == 0:
-        # import IPython, sys; IPython.embed(); sys.exit(-1)
+    invQ_rx = rx.btrs(Q_LU)
     if neq > 0:
-        h = torch.cat((invQ_rx.mm(A.t()) - ry, invQ_rx.mm(G.t()) + rs/d - rz), 1)
+        h = torch.cat((invQ_rx.unsqueeze(1).bmm(A.transpose(1,2)) - ry,
+                       invQ_rx.unsqueeze(1).bmm(G.transpose(1,2)) + rs/d - rz), 2).squeeze(1)
     else:
-        h = invQ_rx.mm(G.t()) + rs/d - rz
+        h = (invQ_rx.unsqueeze(1).bmm(G.transpose(1,2)) + rs/d - rz).squeeze(1)
 
     w = -(h.btrs(S_LU))
 
-    g1 = -rx - w[:,neq:].mm(G)
+    g1 = -rx - w[:,neq:].unsqueeze(1).bmm(G)
     if neq > 0:
-        g1 -= w[:,:neq].mm(A)
+        g1 -= w[:,:neq].unsqueeze(1).bmm(A)
     g2 = -rs - w[:,neq:]
 
-    dx = g1.t().unsqueeze(0).btrs(Q_LU.unsqueeze(0)).squeeze(0).t()
+    dx = g1.btrs(Q_LU)
     ds = g2/d
     dz = w[:,neq:]
     dy = w[:,:neq] if neq > 0 else None
 
-    # if np.all(np.array([x.norm() for x in [rx, rs, rz, ry]]) != 0):
-    if dbg:
-        import IPython, sys; IPython.embed(); sys.exit(-1)
-
     return dx, ds, dz, dy
 
-def pre_factor_kkt(Q, G, A, nBatch):
+def pre_factor_kkt(Q, G, A):
     """ Perform all one-time factorizations and cache relevant matrix products"""
-    nineq, nz, neq, _ = get_sizes(G, A)
+    nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    Q_LU = Q.unsqueeze(0).btrf()
+    Q_LU = Q.btrf()
 
     # S = [ A Q^{-1} A^T        A Q^{-1} G^T          ]
     #     [ G Q^{-1} A^T        G Q^{-1} G^T + D^{-1} ]
@@ -260,32 +254,30 @@ def pre_factor_kkt(Q, G, A, nBatch):
     #   [ A B ] = [ I            0 ] [ A     0              ] [ I    A^{-1} B ]
     #   [ C D ]   [ C A^{-1}     I ] [ 0     D - C A^{-1} B ] [ 0    I        ]
 
-    G_invQ_GT = torch.mm(G, G.t().unsqueeze(0).btrs(Q_LU).squeeze(0))
-    Q_LU = Q_LU.squeeze()
+    G_invQ_GT = torch.bmm(G, G.transpose(1,2).btrs(Q_LU))
     R = G_invQ_GT
     if neq > 0:
-        invQ_AT = A.t().unsqueeze(0).btrs(Q_LU.unsqueeze(0)).squeeze(0)
-        A_invQ_AT = torch.mm(A, invQ_AT)
-        G_invQ_AT = torch.mm(G, invQ_AT)
+        invQ_AT = A.transpose(1,2).btrs(Q_LU)
+        A_invQ_AT = torch.bmm(A, invQ_AT)
+        G_invQ_AT = torch.bmm(G, invQ_AT)
 
-        LU_A_invQ_AT = A_invQ_AT.unsqueeze(0).btrf().squeeze(0)
-        L_A_invQ_AT = torch.tril(LU_A_invQ_AT)
-        L_A_invQ_AT[torch.eye(neq).type_as(Q).byte()] = 1.0
-        U_A_invQ_AT = torch.triu(LU_A_invQ_AT)
+        LU_A_invQ_AT = A_invQ_AT.btrf()
+        M = torch.tril(torch.ones(neq,neq)).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q)
+        L_A_invQ_AT = M*LU_A_invQ_AT
+        L_A_invQ_AT[torch.eye(neq).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q).byte()] = 1.0
+        M = torch.triu(torch.ones(neq,neq)).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q)
+        U_A_invQ_AT = M*LU_A_invQ_AT
 
         S_LU_11 = LU_A_invQ_AT
-        S_LU_21 = G_invQ_AT.mm(L_A_invQ_AT.unsqueeze(0).btrs(
-            LU_A_invQ_AT.unsqueeze(0)).squeeze(0))
-        T = G_invQ_AT.t().unsqueeze(0).btrs(LU_A_invQ_AT.unsqueeze(0)).squeeze(0)
-        S_LU_12 = U_A_invQ_AT.mm(T)
-        S_LU = torch.cat((torch.cat((S_LU_11, S_LU_12), 1),
-                          torch.cat((S_LU_21, torch.zeros(nineq,nineq).type_as(Q)), 1)))
-        S_LU = S_LU.repeat(nBatch, 1, 1)
-        R -= G_invQ_AT.mm(T)
+        S_LU_21 = G_invQ_AT.bmm(L_A_invQ_AT.btrs(LU_A_invQ_AT))
+        T = G_invQ_AT.transpose(1,2).btrs(LU_A_invQ_AT)
+        S_LU_12 = U_A_invQ_AT.bmm(T)
+        S_LU = torch.cat((torch.cat((S_LU_11, S_LU_12), 2),
+                          torch.cat((S_LU_21, torch.zeros(nBatch,nineq,nineq).type_as(Q)), 2)),
+                         1)
+        R -= G_invQ_AT.bmm(T)
     else:
         S_LU = torch.zeros(nBatch, nineq, nineq).type_as(Q)
-
-    R = R.repeat(nBatch, 1, 1)
 
     return Q_LU, S_LU, R
 

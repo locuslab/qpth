@@ -14,13 +14,13 @@ def to_np(t):
 def bger(x, y):
     return x.unsqueeze(2).bmm(y.unsqueeze(1))
 
-def get_sizes(G, A=None, batchedTensor=None):
-    nineq, nz = G.size()
+def get_sizes(G, A=None):
+    nBatch, nineq, nz = G.size()
     if A is not None:
-        neq = A.size(0) if A.ndimension() > 0 else 0
+        neq = A.size(1) if A.ndimension() > 0 else 0
     else:
         neq = None
-    nBatch = batchedTensor.size(0) if batchedTensor is not None else None
+    # nBatch = batchedTensor.size(0) if batchedTensor is not None else None
     return nineq, nz, neq, nBatch
 
 def bdiag(d):
