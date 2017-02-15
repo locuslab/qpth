@@ -16,10 +16,9 @@ from block import block
 
 import time
 
-from qpth.util import bger, bdiag
-from qpth import solvers
-import qpth.solvers.pdipm.single as pdipm_s
-import qpth.solvers.pdipm.batch as pdipm_b
+from .util import bger, bdiag
+from .solvers.pdipm import batch as pdipm_b
+from .solvers.pdipm import single as pdipm_s
 
 class QPFunction(Function):
     def forward(self, inputs, Q, G, h, A, b):

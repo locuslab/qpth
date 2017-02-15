@@ -83,7 +83,7 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
         b.data = b.data.unsqueeze(0).repeat(nBatch,1)
         A.data = A.data.unsqueeze(0).repeat(nBatch,1,1)
 
-    zhats = qpth.QPFunction()(p, Q, G, h, A, b)
+    zhats = qpth.qp.QPFunction()(p, Q, G, h, A, b)
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)
     return [x.grad.data.squeeze(0).cpu().numpy() if x.nelement() > 0 else None \
