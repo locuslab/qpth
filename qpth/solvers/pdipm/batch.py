@@ -2,6 +2,8 @@ import torch
 import sys
 from qpth.util import get_sizes
 
+import numpy as np
+
 def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
@@ -135,7 +137,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         alpha = torch.min(0.999*torch.min(get_step(z, dz),
                                           get_step(s, ds)),
                           torch.ones(nBatch).type_as(Q))
-        assert(alpha0 - alpha[0] <= 1e-5) # TODO: Remove
+        assert(np.isnan(alpha0) or np.isinf(alpha0) or alpha0 - alpha[0] <= 1e-5) # TODO: Remove
 
         alpha_nineq = alpha.repeat(nineq, 1).t()
         alpha_neq = alpha.repeat(neq, 1).t() if neq > 0 else None
