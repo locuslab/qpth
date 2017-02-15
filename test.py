@@ -73,21 +73,28 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
         Q, p, G, h, A, b, truez = [x.cuda() for x in [Q, p, G, h, A, b, truez]]
 
     Q, p, G, h, A, b = [Variable(x) for x in [Q, p, G, h, A, b]]
-    for x in [Q, p, G, h, A, b]: x.requires_grad = True
+    for x in [Q, p, G, h]: x.requires_grad = True
 
     nBatch = 1
     h.data = h.data.unsqueeze(0).repeat(nBatch,1)
     Q.data, G.data = [x.data.unsqueeze(0).repeat(nBatch,1,1) for x in [Q, G]]
     p.data = p.data.repeat(nBatch, 1)
     if b.nelement() > 0:
+        A.requires_grad = True
+        b.requires_grad = True
         b.data = b.data.unsqueeze(0).repeat(nBatch,1)
         A.data = A.data.unsqueeze(0).repeat(nBatch,1,1)
 
     zhats = qpth.qp.QPFunction()(p, Q, G, h, A, b)
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)
-    return [x.grad.data.squeeze(0).cpu().numpy() if x.nelement() > 0 else None \
-            for x in [Q, p, G, h, A, b]]
+
+    grads = [x.grad.data.squeeze(0).cpu().numpy() for x in [Q, p, G, h]]
+    if A.nelement() > 0:
+        grads += [x.grad.data.squeeze(0).cpu().numpy() for x in [A, b]]
+    else:
+        grads += [None, None]
+    return grads
 
 def test_dl_dp():
     nz, neq, nineq = 10, 2, 3
