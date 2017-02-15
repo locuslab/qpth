@@ -107,12 +107,12 @@ class QPFunction(Function):
         # dh:  [-0.099737  2.444964  1.10988 ]
         # import IPython, sys; IPython.embed(); sys.exit(-1)
 
-        dQ = dQs.mean(0).squeeze()
-        dG, dh = [x.mean(0).squeeze() for x in [dGs, dhs]] \
-                 if nineq > 0 else [torch.Tensor().type_as(Q)]*2
-        dA, db = [x.mean(0).squeeze() for x in [dAs, dbs]] \
-                 if neq > 0 else [torch.Tensor().type_as(Q)]*2
-        grads = (dps, dQ, dG, dh, dA, db)
+        # dQ = dQs.mean(0).squeeze()
+        # dG, dh = [x.mean(0).squeeze() for x in [dGs, dhs]] \
+        #          if nineq > 0 else [torch.Tensor().type_as(Q)]*2
+        # dA, db = [x.mean(0).squeeze() for x in [dAs, dbs]] \
+        #          if neq > 0 else [torch.Tensor().type_as(Q)]*2
+        grads = (dps, dQs, dGs, dhs, dAs, dbs)
         print('  + Backward pass took {:0.4f} seconds.'.format(time.time()-start))
 
         return grads
