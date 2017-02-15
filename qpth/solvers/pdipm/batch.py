@@ -132,12 +132,12 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         ds = ds_aff + ds_cor
         dz = dz_aff + dz_cor
         dy = dy_aff + dy_cor if neq > 0 else None
-        import qpth.solvers.pdipm.single as pdipm_s
-        alpha0 = min(1.0, 0.999*min(pdipm_s.get_step(s[0],ds[0]), pdipm_s.get_step(z[0],dz[0])))
+        # import qpth.solvers.pdipm.single as pdipm_s
+        # alpha0 = min(1.0, 0.999*min(pdipm_s.get_step(s[0],ds[0]), pdipm_s.get_step(z[0],dz[0])))
         alpha = torch.min(0.999*torch.min(get_step(z, dz),
                                           get_step(s, ds)),
                           torch.ones(nBatch).type_as(Q))
-        assert(np.isnan(alpha0) or np.isinf(alpha0) or alpha0 - alpha[0] <= 1e-5) # TODO: Remove
+        # assert(np.isnan(alpha0) or np.isinf(alpha0) or alpha0 - alpha[0] <= 1e-5) # TODO: Remove
 
         alpha_nineq = alpha.repeat(nineq, 1).t()
         alpha_neq = alpha.repeat(neq, 1).t() if neq > 0 else None
