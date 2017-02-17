@@ -59,6 +59,15 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         if verbose:
             print('iter: {}, pri_resid: {:.5e}, dual_resid: {:.5e}, mu: {:.5e}'.format(
                 i, pri_resid[0], dual_resid[0], mu[0]))
+
+        d = z/s
+        try:
+            # TODO: Move back down
+            factor_kkt(S_LU, R, d)
+        except:
+            print('='*70+'\n'+"TODO: Remove try/except around factor_kkt!!!"+'\n')
+            return best['x'], best['y'], best['z'], best['s']
+
         if best['resids'] is None:
             best['resids'] = resids
             best['x'] = x.clone()
@@ -81,7 +90,6 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
             if neq > 0:
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
-        d = z/s
         if nNotImproved == 3 or best['resids'].max() < 1e-12:
             return best['x'], best['y'], best['z'], best['s']
 
@@ -89,11 +97,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         # factor_kkt(L_S, R_, d[0])
         # dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
         #     L_Q, d[0], G, A, L_S, rx[0], rs[0], rz[0], ry[0])
-        try:
-            factor_kkt(S_LU, R, d)
-        except:
-            print('='*70+'\n'+"TODO: Remove try/except around factor_kkt!!!"+'\n')
-            return best['x'], best['y'], best['z'], best['s']
+        # factor_kkt(S_LU, R, d) # TODO: Moved up due to numerical issues.
         dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
             Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
 
