@@ -89,7 +89,11 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         # factor_kkt(L_S, R_, d[0])
         # dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
         #     L_Q, d[0], G, A, L_S, rx[0], rs[0], rz[0], ry[0])
-        factor_kkt(S_LU, R, d)
+        try:
+            factor_kkt(S_LU, R, d)
+        except:
+            print('='*70+'\n'+"TODO: Remove try/except around factor_kkt!!!"+'\n')
+            return best['x'], best['y'], best['z'], best['s']
         dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
             Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
 
