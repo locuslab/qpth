@@ -4,7 +4,7 @@ from qpth.util import get_sizes
 
 import numpy as np
 
-def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
+def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
@@ -56,6 +56,9 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R):
         pri_resid = y_resid + z_resid
         dual_resid = torch.norm(rx, 2, 1).squeeze()
         resids = pri_resid + dual_resid + nineq*mu
+        if verbose:
+            print('iter: {}, pri_resid: {:.5e}, dual_resid: {:.5e}, mu: {:.5e}'.format(
+                i, pri_resid[0], dual_resid[0], mu[0]))
         if best['resids'] is None:
             best['resids'] = resids
             best['x'] = x.clone()

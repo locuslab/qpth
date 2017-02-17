@@ -21,6 +21,9 @@ from .solvers.pdipm import batch as pdipm_b
 from .solvers.pdipm import single as pdipm_s
 
 class QPFunction(Function):
+    def __init__(self, verbose=False):
+        self.verbose = verbose
+
     def forward(self, inputs, Q, G, h, A, b):
         start = time.time()
         assert Q.ndimension() == 3
@@ -38,7 +41,8 @@ class QPFunction(Function):
         self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
 
         zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
-            inputs, Q, G, h, A, b, self.Q_LU, self.S_LU, self.R)
+            inputs, Q, G, h, A, b, self.Q_LU, self.S_LU, self.R,
+            self.verbose)
 
         self.save_for_backward(inputs, zhats, Q, G, h, A, b)
         print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
