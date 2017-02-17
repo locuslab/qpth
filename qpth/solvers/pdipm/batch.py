@@ -56,6 +56,15 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         pri_resid = y_resid + z_resid
         dual_resid = torch.norm(rx, 2, 1).squeeze()
         resids = pri_resid + dual_resid + nineq*mu
+
+        d = z/s
+        try:
+            factor_kkt(S_LU, R, d)
+        except:
+            # TODO: Move this below.
+            print('='*70+'\n'+"TODO: Remove try/except around factor_kkt!!!"+'\n')
+            return best['x'], best['y'], best['z'], best['s']
+
         if verbose:
             print('iter: {}, pri_resid: {:.5e}, dual_resid: {:.5e}, mu: {:.5e}'.format(
                 i, pri_resid[0], dual_resid[0], mu[0]))
@@ -88,13 +97,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         # factor_kkt(L_S, R_, d[0])
         # dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
         #     L_Q, d[0], G, A, L_S, rx[0], rs[0], rz[0], ry[0])
-        d = z/s
-        try:
-            factor_kkt(S_LU, R, d)
-        except:
-            # print('='*70+'\n'+"TODO: Remove try/except around factor_kkt!!!"+'\n')
-            # return best['x'], best['y'], best['z'], best['s']
-            continue
+        # TODO: Move factorization back here.
         dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
             Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
 
