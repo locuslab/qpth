@@ -15,7 +15,11 @@ def bger(x, y):
     return x.unsqueeze(2).bmm(y.unsqueeze(1))
 
 def get_sizes(G, A=None):
-    nBatch, nineq, nz = G.size()
+    if G.dim() == 2:
+        nineq, nz = G.size()
+        nBatch = 1
+    elif G.dim() == 3:
+        nBatch, nineq, nz = G.size()
     if A is not None:
         neq = A.size(1) if A.ndimension() > 0 else 0
     else:
