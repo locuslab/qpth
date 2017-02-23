@@ -275,6 +275,8 @@ def pre_factor_kkt(Q, G, A):
         G_invQ_AT = torch.bmm(G, invQ_AT)
 
         LU_A_invQ_AT = A_invQ_AT.btrf()
+        if neq == 1:
+            LU_A_invQ_AT = LU_A_invQ_AT.view(-1, 1, 1)
         M = torch.tril(torch.ones(neq,neq)).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q)
         L_A_invQ_AT = M*LU_A_invQ_AT
         L_A_invQ_AT[torch.eye(neq).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q).byte()] = 1.0
