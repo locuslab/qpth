@@ -77,13 +77,19 @@ class QPFunction(Function):
         # dLs[I] = 0.0
         # import IPython, sys; IPython.embed(); sys.exit(-1)
 
-        # from block import block
-        # K1 = block(((Q, G.t(), A.t()),
-        #             (torch.diag(self.lams[0]).mm(G), torch.diag(G.mv(zhats[0])-h), 0),
-        #             (A, 0, 0))).t().cpu().numpy()
-        # rhs1 = torch.cat((-dl_dzhat[0],
-        #                  torch.zeros(nineq+neq).type_as(G))).cpu().numpy()
-        # dx1, dlam1, dnu1 = np.split(np.linalg.solve(K1, rhs1), [nz, nz+nineq])
+        # if neq > 0:
+        #     from block import block
+        #     Q = Q[0]
+        #     G = G[0]
+        #     A = A[0]
+        #     h = h[0]
+        #     K1 = block(((Q, G.t(), A.t()),
+        #                 (torch.diag(self.lams[0]).mm(G), torch.diag(G.mv(zhats[0])-h), 0),
+        #                 (A, 0, 0))).t().cpu().numpy()
+        #     rhs1 = torch.cat((-dl_dzhat[0],
+        #                     torch.zeros(nineq+neq).type_as(G))).cpu().numpy()
+        #     dx1, dlam1, dnu1 = np.split(np.linalg.solve(K1, rhs1), [nz, nz+nineq])
+        #     import IPython, sys; IPython.embed(); sys.exit(-1)
 
         # K2 = block(((Q, 0, G.t(), A.t()),
         #             (0, torch.diag(d[0]), 'I', 0),
