@@ -109,6 +109,12 @@ solution.
 + [bamos/block](https://github.com/bamos/block):
   *Our intelligent block matrix library for numpy, PyTorch, and beyond.*
 
+## Install via pip
+
+```
+pip install qpth
+```
+
 # Usage
 
 You can see many full working examples in our
