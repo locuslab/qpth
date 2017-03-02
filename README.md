@@ -123,7 +123,7 @@ is a lower-triangular matrix and <img src="https://rawgit.com/locuslab/qpth/mast
 for some learnable <img src="https://rawgit.com/locuslab/qpth/master/svgs/d1a81d9dc6dd30e43ba27c5490a34a32.svg?invert_in_darkmode" align=middle width=14.519505pt height=13.38744pt/> and <img src="https://rawgit.com/locuslab/qpth/master/svgs/ac3148a5746b81298cb0c456b661f197.svg?invert_in_darkmode" align=middle width=14.58039pt height=13.38744pt/> to ensure the
 problem is always feasible.
 
-```
+```Python
 from qpth.qp import QPFunction
 
 ...

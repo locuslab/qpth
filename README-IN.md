@@ -130,7 +130,7 @@ is a lower-triangular matrix and $h=G z_0 + s_0$
 for some learnable $z_0$ and $s_0$ to ensure the
 problem is always feasible.
 
-```
+```Python
 from qpth.qp import QPFunction
 
 ...
