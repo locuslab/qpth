@@ -4,7 +4,7 @@
 Crafted by [Brandon Amos](http://bamos.github.io) and
 [J. Zico Kolter](http://zicokolter.com).*
 
-[release-image]: http://img.shields.io/badge/release-0.0.1-blue.svg?style=flat
+[release-image]: http://img.shields.io/badge/release-0.0.2-blue.svg?style=flat
 [releases]: https://pypi.python.org/pypi/qpth
 
 [license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
