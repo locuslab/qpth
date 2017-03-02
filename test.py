@@ -76,16 +76,12 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
     for x in [Q, p, G, h]: x.requires_grad = True
 
     nBatch = 1
-    h.data = h.data.unsqueeze(0).repeat(nBatch,1)
-    Q.data, G.data = [x.data.unsqueeze(0).repeat(nBatch,1,1) for x in [Q, G]]
-    p.data = p.data.repeat(nBatch, 1)
     if b.nelement() > 0:
         A.requires_grad = True
         b.requires_grad = True
-        b.data = b.data.unsqueeze(0).repeat(nBatch,1)
-        A.data = A.data.unsqueeze(0).repeat(nBatch,1,1)
 
     zhats = qpth.qp.QPFunction()(p, Q, G, h, A, b)
+
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)
 

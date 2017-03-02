@@ -16,7 +16,7 @@ from block import block
 
 import time
 
-from .util import bger, bdiag
+from .util import bger, bdiag, expandParam
 from .solvers.pdipm import batch as pdipm_b
 from .solvers.pdipm import single as pdipm_s
 
@@ -24,14 +24,15 @@ class QPFunction(Function):
     def __init__(self, verbose=False):
         self.verbose = verbose
 
-    def forward(self, inputs, Q, G, h, A, b):
+    def forward(self, inputs, Q_, G_, h_, A_, b_):
         start = time.time()
-        assert Q.ndimension() == 3
-        assert G.ndimension() == 3
-        assert h.ndimension() == 2
-        assert A.ndimension() in (0, 3)
-        assert b.ndimension() in (0, 2)
-        nBatch, nineq, nz = G.size()
+        nBatch = inputs.size(0)
+        Q, _ = expandParam(Q_, nBatch, 3)
+        G, _ = expandParam(G_, nBatch, 3)
+        h, _ = expandParam(h_, nBatch, 2)
+        A, _ = expandParam(A_, nBatch, 3)
+        b, _ = expandParam(b_, nBatch, 2)
+        _, nineq, nz = G.size()
         neq = A.size(1) if A.ndimension() > 0 else 0
         assert(neq > 0 or nineq > 0)
         assert(inputs.dim() == 2)
@@ -44,13 +45,19 @@ class QPFunction(Function):
             inputs, Q, G, h, A, b, self.Q_LU, self.S_LU, self.R,
             self.verbose)
 
-        self.save_for_backward(inputs, zhats, Q, G, h, A, b)
+        self.save_for_backward(inputs, zhats, Q_, G_, h_, A_, b_)
         print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
         return zhats
 
     def backward(self, dl_dzhat):
         start = time.time()
         inputs, zhats, Q, G, h, A, b = self.saved_tensors
+        nBatch = inputs.size(0)
+        Q, Q_e = expandParam(Q, nBatch, 3)
+        G, G_e = expandParam(G, nBatch, 3)
+        h, h_e = expandParam(h, nBatch, 2)
+        A, A_e = expandParam(A, nBatch, 3)
+        b, b_e = expandParam(b, nBatch, 2)
 
         nBatch = inputs.size(0)
         neq, nineq, nz = self.neq, self.nineq, self.nz
@@ -65,13 +72,23 @@ class QPFunction(Function):
 
         dps = dx
         dGs = bger(dlam, zhats) + bger(self.lams, dx)
+        if G_e:
+            dGs = dGs.mean(0).squeeze(0)
         dhs = -dlam
+        if h_e:
+            dhs = dhs.mean(0).squeeze(0)
         if neq > 0:
             dAs = bger(dnu, zhats) + bger(self.nus, dx)
             dbs = -dnu
+            if A_e:
+                dAs = dAs.mean(0).squeeze(0)
+            if b_e:
+                dbs = dbs.mean(0).squeeze(0)
         else:
             dAs, dbs = None, None
         dQs = 0.5*(bger(dx, zhats) + bger(zhats, dx))
+        if Q_e:
+            dQs = dQs.mean(0).squeeze(0)
 
         # I = 1-torch.tril(torch.ones(nz,nz)).repeat(nBatch, 1, 1).type_as(G).byte()
         # dLs[I] = 0.0

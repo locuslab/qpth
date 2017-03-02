@@ -33,3 +33,11 @@ def bdiag(d):
     I = torch.eye(sz).repeat(nBatch,1,1).type(torch.cuda.ByteTensor) # TODO
     D[I] = d.squeeze()
     return D
+
+def expandParam(X, nBatch, nDim):
+    if X.ndimension() in (0, nDim):
+        return X, False
+    elif X.ndimension() == nDim - 1:
+        return X.unsqueeze(0).expand(*([nBatch]+list(X.size()))), True
+    else:
+        raise RuntimeError("Unexpected number of dimensions.")
