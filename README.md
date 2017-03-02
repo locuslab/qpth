@@ -19,7 +19,7 @@ economics, EE, operations research, control engineering, geophysics,
 and molecular modeling.
 As we build our machine learning systems to interact with real
 data from these fields, we often **cannot** (but sometimes can)
-simply ``learn away'' the optimization sub-problems by adding more
+simply "learn away" the optimization sub-problems by adding more
 layers in our network. Well-defined optimization problems may be added
 if you have a thorough understanding of your feature space, but
 oftentimes we **don't** have this understanding and resort to
@@ -184,7 +184,7 @@ class OptNet(nn.Module):
   not be exactly solving them. Oftentimes, using doubles
   instead of floats will help the solver better approximate
   the solution.
-+ See the ``Limitation of the method'' portion of our paper
++ See the "Limitation of the method" portion of our paper
   for some more notes.
 
 # Acknowledgments
@@ -321,8 +321,8 @@ the parameter matrices.
 ## Efficiently computing gradients.
 
 A key point of the particular form of primal-dual interior point method that we
-employ is that it is possible to compute the backward pass gradients ``for
-free'' after solving the original QP, without an additional matrix factorization
+employ is that it is possible to compute the backward pass gradients "for
+free" after solving the original QP, without an additional matrix factorization
 or solve.  Specifically, at each iteration in the primal-dual interior point, we
 are computing an LU decomposition of the matrix <img src="https://rawgit.com/locuslab/qpth/master/svgs/e9092102e532684824c1f06bb6eeb88e.svg?invert_in_darkmode" align=middle width=37.19694pt height=21.69783pt/>. (We
 actually perform an LU decomposition of a certain subset of the matrix formed
