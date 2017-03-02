@@ -1,11 +1,11 @@
-# qpth  [ ![Release] [release-image] ] [releases] [ ![License] [license-image] ] [license]
+# qpth • [ ![Release] [release-image] ] [releases] [ ![License] [license-image] ] [license]
 
 *A fast and differentiable QP solver for PyTorch.
 Crafted by [Brandon Amos](http://bamos.github.io) and
 [J. Zico Kolter](http://zicokolter.com).*
 
 [release-image]: http://img.shields.io/badge/release-0.0.1-blue.svg?style=flat
-[releases]: https://github.com/cmusatyalab/openface/releases
+[releases]: https://pypi.python.org/pypi/qpth
 
 [license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
 [license]: LICENSE
