@@ -173,7 +173,7 @@ class OptNet(nn.Module):
 
         L = self.M*self.L
         Q = L.mm(L.t()) + self.eps*Variable(torch.eye(self.nCls)).cuda()
-        h = self.z0.mm(self.G.t())+self.s0
+        h = self.G.mv(self.z0)+self.s0
         e = Variable(torch.Tensor())
         x = QPFunction(verbose=False)(x, Q, G, h, e, e)
 
