@@ -46,7 +46,7 @@ class QPFunction(Function):
             self.verbose)
 
         self.save_for_backward(inputs, zhats, Q_, G_, h_, A_, b_)
-        print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
+        # print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
         return zhats
 
     def backward(self, dl_dzhat):
@@ -140,7 +140,7 @@ class QPFunction(Function):
         # dA, db = [x.mean(0).squeeze() for x in [dAs, dbs]] \
         #          if neq > 0 else [torch.Tensor().type_as(Q)]*2
         grads = (dps, dQs, dGs, dhs, dAs, dbs)
-        print('  + Backward pass took {:0.4f} seconds.'.format(time.time()-start))
+        # print('  + Backward pass took {:0.4f} seconds.'.format(time.time()-start))
 
         return grads
 
@@ -175,7 +175,7 @@ class QPFunction(Function):
         self.lams = lams
 
         self.save_for_backward(input, zhats, L, G, A, z0, s0)
-        print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
+        # print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
         return zhats
 
 # class QPLayer(Module):
