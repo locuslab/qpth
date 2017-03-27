@@ -3,6 +3,7 @@ import sys
 from qpth.util import get_sizes
 
 import numpy as np
+from block import block
 
 def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
     """
@@ -188,7 +189,6 @@ def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
         H_[:,:nz,:nz] = Q.repeat(nBatch, 1, 1)
         H_[:,-nineq:,-nineq:] = D
 
-        from block import block
         A_ = block(((G, 'I'),
                     (A, torch.zeros(neq, nineq).type_as(Q))))
 
@@ -202,18 +202,18 @@ def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
         g_ = torch.cat([rx, rs], 1)
         h_ = rz
 
-    H_LU = H_.btrf()
+    H_LU = H_.btrifact()
 
     A = A_.repeat(nBatch, 1, 1)
-    invH_A_= A.transpose(1, 2).btrs(H_LU)
-    invH_g_ = g_.btrs(H_LU)
+    invH_A_= A.transpose(1, 2).btrisolve(*H_LU)
+    invH_g_ = g_.btrisolve(*H_LU)
 
     S_ = torch.bmm(A, invH_A_)
-    S_LU = S_.btrf()
+    S_LU = S_.btrifact()
     t_ = torch.mm(invH_g_, A_.t()) - h_
-    w_ = -t_.btrs(S_LU)
+    w_ = -t_.btrisolve(*S_LU)
     t_ = -g_-w_.mm(A_)
-    v_ = t_.btrs(H_LU)
+    v_ = t_.btrisolve(*H_LU)
 
     dx = v_[:,:nz]
     ds = v_[:,nz:]
@@ -226,21 +226,21 @@ def solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry):
     """ Solve KKT equations for the affine step"""
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    invQ_rx = rx.btrs(Q_LU)
+    invQ_rx = rx.btrisolve(*Q_LU)
     if neq > 0:
         h = torch.cat((invQ_rx.unsqueeze(1).bmm(A.transpose(1,2)) - ry,
                        invQ_rx.unsqueeze(1).bmm(G.transpose(1,2)) + rs/d - rz), 2).squeeze(1)
     else:
         h = (invQ_rx.unsqueeze(1).bmm(G.transpose(1,2)) + rs/d - rz).squeeze(1)
 
-    w = -(h.btrs(S_LU))
+    w = -(h.btrisolve(*S_LU))
 
     g1 = -rx - w[:,neq:].unsqueeze(1).bmm(G)
     if neq > 0:
         g1 -= w[:,:neq].unsqueeze(1).bmm(A)
     g2 = -rs - w[:,neq:]
 
-    dx = g1.btrs(Q_LU)
+    dx = g1.btrisolve(*Q_LU)
     ds = g2/d
     dz = w[:,neq:]
     dy = w[:,:neq] if neq > 0 else None
@@ -251,12 +251,12 @@ def pre_factor_kkt(Q, G, A):
     """ Perform all one-time factorizations and cache relevant matrix products"""
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    Q_LU = Q.btrf()
+    Q_LU = Q.btrifact()
 
     # S = [ A Q^{-1} A^T        A Q^{-1} G^T          ]
     #     [ G Q^{-1} A^T        G Q^{-1} G^T + D^{-1} ]
     #
-    # We compute a partial LU decomposition of S matrix
+    # We compute a partial LU decomposition of the S matrix
     # that can be completed once D^{-1} is known.
     # This is done for a general matrix by decomposing
     # S using the Schur complement and then LU-factorizing
@@ -265,33 +265,35 @@ def pre_factor_kkt(Q, G, A):
     #   [ A B ] = [ I            0 ] [ A     0              ] [ I    A^{-1} B ]
     #   [ C D ]   [ C A^{-1}     I ] [ 0     D - C A^{-1} B ] [ 0    I        ]
 
-    G_invQ_GT = torch.bmm(G, G.transpose(1,2).btrs(Q_LU))
-    R = G_invQ_GT
+    G_invQ_GT = torch.bmm(G, G.transpose(1,2).btrisolve(*Q_LU))
+    R = G_invQ_GT.clone()
+    S_LU_pivots = torch.IntTensor(range(1,1+neq+nineq)).unsqueeze(0) \
+                        .repeat(nBatch, 1).type_as(Q).int()
     if neq > 0:
-        invQ_AT = A.transpose(1,2).btrs(Q_LU)
+        invQ_AT = A.transpose(1,2).btrisolve(*Q_LU)
         A_invQ_AT = torch.bmm(A, invQ_AT)
         G_invQ_AT = torch.bmm(G, invQ_AT)
 
-        LU_A_invQ_AT = A_invQ_AT.btrf()
-        if neq == 1:
-            LU_A_invQ_AT = LU_A_invQ_AT.view(-1, 1, 1)
-        M = torch.tril(torch.ones(neq,neq)).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q)
-        L_A_invQ_AT = M*LU_A_invQ_AT
-        L_A_invQ_AT[torch.eye(neq).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q).byte()] = 1.0
-        M = torch.triu(torch.ones(neq,neq)).unsqueeze(0).expand(nBatch, neq, neq).type_as(Q)
-        U_A_invQ_AT = M*LU_A_invQ_AT
+        LU_A_invQ_AT = A_invQ_AT.btrifact()
+        P_A_invQ_AT, L_A_invQ_AT, U_A_invQ_AT = torch.btriunpack(*LU_A_invQ_AT)
+        P_A_invQ_AT = P_A_invQ_AT.type_as(A_invQ_AT)
 
-        S_LU_11 = LU_A_invQ_AT
-        S_LU_21 = G_invQ_AT.bmm(L_A_invQ_AT.btrs(LU_A_invQ_AT))
-        T = G_invQ_AT.transpose(1,2).btrs(LU_A_invQ_AT)
+        S_LU_11 = LU_A_invQ_AT[0]
+        U_A_invQ_AT_inv = (P_A_invQ_AT.bmm(L_A_invQ_AT)).btrisolve(*LU_A_invQ_AT)
+        S_LU_21 = G_invQ_AT.bmm(U_A_invQ_AT_inv)
+        T = G_invQ_AT.transpose(1,2).btrisolve(*LU_A_invQ_AT)
         S_LU_12 = U_A_invQ_AT.bmm(T)
-        S_LU = torch.cat((torch.cat((S_LU_11, S_LU_12), 2),
-                          torch.cat((S_LU_21, torch.zeros(nBatch,nineq,nineq).type_as(Q)), 2)),
-                         1)
+        S_LU_22 = torch.zeros(nBatch,nineq,nineq).type_as(Q)
+        S_LU_data = torch.cat((torch.cat((S_LU_11, S_LU_12), 2),
+                               torch.cat((S_LU_21, S_LU_22), 2)),
+                              1)
+        S_LU_pivots[:,:neq] = LU_A_invQ_AT[1]
+
         R -= G_invQ_AT.bmm(T)
     else:
-        S_LU = torch.zeros(nBatch, nineq, nineq).type_as(Q)
+        S_LU_data = torch.zeros(nBatch, nineq, nineq).type_as(Q)
 
+    S_LU = [S_LU_data, S_LU_pivots]
     return Q_LU, S_LU, R
 
 factor_kkt_eye = None
@@ -299,6 +301,7 @@ factor_kkt_eye = None
 def factor_kkt(S_LU, R, d):
     """ Factor the U22 block that we can only do after we know D. """
     nBatch, nineq = d.size()
+    neq = S_LU[1].size(1)-nineq
     # TODO: There's probably a better way to add a batched diagonal.
     global factor_kkt_eye
     if factor_kkt_eye is None or factor_kkt_eye.size() != d.size():
@@ -306,4 +309,18 @@ def factor_kkt(S_LU, R, d):
         factor_kkt_eye = torch.eye(nineq).repeat(nBatch,1,1).type_as(R).byte()
     T = R.clone()
     T[factor_kkt_eye] += (1./d).squeeze()
-    S_LU[:,-nineq:,-nineq:] = T.btrf()
+    T_LU = T.btrifact()
+    oldPivotsPacked = S_LU[1][:,-nineq:] - neq
+    dtype = S_LU[0].type()
+    oldPivots, _, _ = torch.btriunpack(None, oldPivotsPacked, 'P', dtype)
+    newPivotsPacked = T_LU[1]
+    newPivots, _, _ = torch.btriunpack(None, newPivotsPacked, 'P', dtype)
+
+    # Re-pivot the S_LU_21 block.
+    if neq > 0:
+        S_LU_21 = S_LU[0][:,-nineq:,:neq]
+        S_LU[0][:,-nineq:,:neq] = newPivots.transpose(1, 2).bmm(oldPivots.bmm(S_LU_21))
+
+    # Add the new S_LU_22 block.
+    S_LU[0][:,-nineq:,-nineq:] = T_LU[0]
+    S_LU[1][:,-nineq:] = newPivotsPacked + neq
