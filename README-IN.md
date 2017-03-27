@@ -1,4 +1,4 @@
-# qpth • [ ![Release] [release-image] ] [releases] [ ![License] [license-image] ] [license]
+# qpth • [![Release][release-image]][releases] [![License][license-image]][license]
 
 *A fast and differentiable QP solver for PyTorch.
 Crafted by [Brandon Amos](http://bamos.github.io) and
