@@ -1,0 +1,18 @@
+title: locuslab/qpth
+short_description: A fast and differentiable QP solver for PyTorch
+description: |
+  A fast and differentiable QP solver for PyTorch.
+  Crafted by <a href="https://bamos.github.io">Brandon Amos</a>
+  and
+  <a href="https://zicokolter.com">J. Zico Kolter</a>.
+  For more context and details, see our
+  <a href="https://arxiv.org/abs/1703.00443">OptNet paper</a>.
+github:
+  is_project_page: True
+  repository_url: 'https://github.com/locuslab/qpth'
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  math_engine: mathjax
+  syntax_highlighter: rouge
