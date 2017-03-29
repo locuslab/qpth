@@ -101,8 +101,7 @@ solution.
 
 # Setup and Dependencies
 
-+ Python/numpy
-+ [PyTorch](https://pytorch.org)
++ Python/numpy/[PyTorch](https://pytorch.org)
 + [bamos/block](https://github.com/bamos/block):
   *Our intelligent block matrix library for numpy, PyTorch, and beyond.*
 
