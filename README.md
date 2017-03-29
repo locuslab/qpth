@@ -7,7 +7,7 @@ Crafted by [Brandon Amos](http://bamos.github.io) and
 [release-image]: http://img.shields.io/badge/release-0.0.2-blue.svg?style=flat
 [releases]: https://pypi.python.org/pypi/qpth
 
-[license-image]: http://img.shields.io/website-up-down-green-red/http/locuslab.github.io%2Fqpth%2Findex.html.svg
+[license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
 [license]: LICENSE
 
 ---
