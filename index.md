@@ -508,8 +508,9 @@ $$
 \end{equation*}
 $$
 
-where $\tilde{d}_\lambda = D(\lambda^\star) d_\lambda$ for $d_\lambda$ as
-defined earlier. Thus, all the backward pass gradients can be computed
+where $$\tilde{d}_\lambda = D(\lambda^\star) d_\lambda$$
+for $d_\lambda$ as defined earlier.
+Thus, all the backward pass gradients can be computed
 using the factored KKT matrix at the solution.  Crucially, because the
 bottleneck of solving this linear system is computing the factorization of the
 KKT matrix (cubic time as opposed to the quadratic time for solving via
