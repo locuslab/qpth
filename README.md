@@ -10,4 +10,6 @@ Crafted by [Brandon Amos](http://bamos.github.io) and
 [license-image]: http://img.shields.io/website-up-down-green-red/http/locuslab.github.io%2Fqpth%2Findex.html.svg
 [license]: LICENSE
 
+---
+
 + [More details are available on our project website here](http://locuslab.github.io/qpth)
