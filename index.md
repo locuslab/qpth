@@ -456,12 +456,10 @@ $$
     \frac{\partial \ell}{\partial p} &= d_z
     & \frac{\partial \ell}{\partial b} &= -d_\nu \\
     \frac{\partial \ell}{\partial p} &= d_z
-    & \frac{\partial \ell}{\partial b} &= -d_\nu \\
-    \frac{\partial \ell}{\partial h} &= -D(\lambda^\star) d_\lambda
-    & \frac{\partial \ell}{\partial Q} &= \frac{1}{2}(d_x x^T + xd_x^T) \\
-    \frac{\partial \ell}{\partial A} &= d_\nu x^T + \nu d_x^T
-    & \frac{\partial \ell}{\partial G} &= D(\lambda^\star)(d_\lambda x^T +
-    \lambda d_x^T)
+    & \frac{\partial \ell}{\partial Q} &= \frac{1}{2}(d_z z^T + zd_z^T) \\
+    \frac{\partial \ell}{\partial A} &= d_\nu z^T + \nu d_z^T
+    & \frac{\partial \ell}{\partial G} &= D(\lambda^\star)(d_\lambda z^T +
+    \lambda d_z^T)
   \end{aligned}
   \label{eq:grads}
 \end{equation*}
