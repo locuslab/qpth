@@ -258,12 +258,8 @@ def pre_factor_kkt(Q, G, A):
     #
     # We compute a partial LU decomposition of the S matrix
     # that can be completed once D^{-1} is known.
-    # This is done for a general matrix by decomposing
-    # S using the Schur complement and then LU-factorizing
-    # the matrices in the middle:
-    #
-    #   [ A B ] = [ I            0 ] [ A     0              ] [ I    A^{-1} B ]
-    #   [ C D ]   [ C A^{-1}     I ] [ 0     D - C A^{-1} B ] [ 0    I        ]
+    # See the 'Block LU factorization' part of our website
+    # for more details.
 
     G_invQ_GT = torch.bmm(G, G.transpose(1,2).btrisolve(*Q_LU))
     R = G_invQ_GT.clone()
