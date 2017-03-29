@@ -520,3 +520,94 @@ requirements for computing all the necessary gradients in the backward pass is
 virtually nonexistent compared with the time of computing the solution.  To the
 best of our knowledge, this is the first time that this fact has been exploited
 in the context of learning end-to-end systems.
+
+## Block LU factorization
+
+One optimization we have added to our solver is a
+partial block LU factorization of one of the matrix
+used to solve the KKT system.
+"Partial" here means that most elements of the matrix stay
+the same, but some change.
+
+**Theorem.** Let
+
+$$
+X =
+\begin{bmatrix}
+  A & B \\
+  C & D \\
+\end{bmatrix}
+$$
+
+be the matrix we are interested in factorizing.
+Let $S=D-CA^{-1}B$ be the Schur complement of the block A,
+and represent the LU factorizations of $S$ and $A$
+respectively as $S=P_S S_L S_U$ and $A=P_A A_L A_U$.
+Then a block LU factorization of $X$ is
+
+$$
+X =
+\begin{bmatrix}
+  P_A & 0 \\
+  0 & P_S \\
+\end{bmatrix}
+\begin{bmatrix}
+  A_L & 0 \\
+  P_S^{-1} C A_U^{-1} & S_L \\
+\end{bmatrix}
+\begin{bmatrix}
+  A_U & A_UA^{-1}B \\
+  0 & S_U \\
+\end{bmatrix}
+$$
+
+**Proof.**
+
+$$
+\begin{align}
+\begin{bmatrix}
+  P_A & 0 \\
+  0 & P_S \\
+\end{bmatrix}
+\begin{bmatrix}
+  A_L & 0 \\
+  P_S^{-1} C A_U^{-1} & S_L \\
+\end{bmatrix}
+\begin{bmatrix}
+  A_U & A_UA^{-1}B \\
+  0 & S_U \\
+\end{bmatrix}
+&= 
+\begin{bmatrix}
+  P_AA_L & 0 \\
+  CA_U^{-1} & P_SS_L \\
+\end{bmatrix}
+\begin{bmatrix}
+  A_U & A_UA^{-1}B \\
+  0 & S_U \\
+\end{bmatrix} \\
+&= 
+\begin{bmatrix}
+  P_AA_LA_U & P_AA_LA_UA^{-1}B \\
+  CA_U^{-1}A_U & CA_U^{-1}A_UA^{-1}B+P_SS_LS_U \\
+\end{bmatrix} \\
+&= 
+\begin{bmatrix}
+  A & AA^{-1}B \\
+  C & CA^{-1}B+D-CA^{-1}B \\
+\end{bmatrix} \\
+&= 
+\begin{bmatrix}
+  A & B \\
+  C & D \\
+\end{bmatrix} \\
+&= X
+
+\end{align}
+$$
+
+**Corollary.**
+If $A,B,C$ are fixed but $D$ changes over iterations,
+$CA^{-1}B$ and the factorization of $A$ can be pre-computed once
+and only $S$ (a much smaller matrix) needs to be factorized
+in each iteration.
