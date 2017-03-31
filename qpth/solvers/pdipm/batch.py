@@ -308,9 +308,9 @@ def factor_kkt(S_LU, R, d):
     T_LU = T.btrifact()
     oldPivotsPacked = S_LU[1][:,-nineq:] - neq
     dtype = S_LU[0].type()
-    oldPivots, _, _ = torch.btriunpack(None, oldPivotsPacked, 'P', dtype)
+    oldPivots, _, _ = torch.btriunpack(T_LU[0], oldPivotsPacked, unpack_data=False)
     newPivotsPacked = T_LU[1]
-    newPivots, _, _ = torch.btriunpack(None, newPivotsPacked, 'P', dtype)
+    newPivots, _, _ = torch.btriunpack(T_LU[0], newPivotsPacked, unpack_data=False)
 
     # Re-pivot the S_LU_21 block.
     if neq > 0:
