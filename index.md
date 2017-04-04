@@ -171,7 +171,7 @@ class OptNet(nn.Module):
         Q = L.mm(L.t()) + self.eps*Variable(torch.eye(self.nCls)).cuda()
         h = self.G.mv(self.z0)+self.s0
         e = Variable(torch.Tensor())
-        x = QPFunction(verbose=False)(x, Q, G, h, e, e)
+        x = QPFunction(verbose=False)(Q, x, G, h, e, e)
 
         return F.log_softmax(x)
 {% endhighlight %}
