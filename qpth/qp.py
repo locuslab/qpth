@@ -16,7 +16,7 @@ from block import block
 
 import time
 
-from .util import bger, bdiag, expandParam
+from .util import bger, bdiag, expandParam, extract_nBatch
 from .solvers.pdipm import batch as pdipm_b
 from .solvers.pdipm import single as pdipm_s
 
@@ -24,42 +24,86 @@ class QPFunction(Function):
     def __init__(self, verbose=False):
         self.verbose = verbose
 
-    def forward(self, inputs, Q_, G_, h_, A_, b_):
+    def forward(self, Q_, p_, G_, h_, A_, b_):
+        """Solve a batch of QPs.
+
+        This function solves a batch of QPs, each optimizing over
+        `nz` variables and having `nineq` inequality constraints
+        and `neq` equality constraints.
+        The optimization problem for each instance in the batch
+        (dropping indexing from the notation) is of the form
+
+            \hat z =   argmin_z 1/2 z^T Q z + p^T z
+                     subject to Gz <= h
+                                Az  = b
+
+        where Q \in S^{nz,nz},
+              S^{nz,nz} is the set of all positive semi-definite matrices,
+              p \in R^{nz}
+              G \in R^{nineq,nz}
+              h \in R^{nineq}
+              A \in R^{neq,nz}
+              b \in R^{neq}
+
+        These parameters should all be passed to this function as
+        Variable- or Parameter-wrapped Tensors.
+        (See torch.autograd.Variable and torch.nn.parameter.Parameter)
+
+        If you want to solve a batch of QPs where `nz`, `nineq` and `neq`
+        are the same, but some of the contents differ across the
+        minibatch, you can pass in tensors in the standard way
+        where the first dimension indicates the batch example.
+        This can be done with some or all of the coefficients.
+
+        You do not need to add an extra dimension to coefficients
+        that will not change across all of the minibatch examples.
+        This function is able to infer such cases.
+
+        Parameters:
+          Q:  A (nBatch, nz, nz) or (nz, nz) Tensor.
+          p:  A (nBatch, nz) or (nz) Tensor.
+          G:  A (nBatch, nineq, nz) or (nineq, nz) Tensor.
+          h:  A (nBatch, nineq) or (nineq) Tensor.
+          A:  A (nBatch, neq, nz) or (neq, nz) Tensor.
+          b:  A (nBatch, neq) or (neq) Tensor.
+
+        Returns: \hat z: a (nBatch, nz) Tensor.
+        """
         start = time.time()
-        nBatch = inputs.size(0)
+        nBatch = extract_nBatch(Q_, p_, G_, h_, A_, b_)
         Q, _ = expandParam(Q_, nBatch, 3)
+        p, _ = expandParam(p_, nBatch, 2)
         G, _ = expandParam(G_, nBatch, 3)
         h, _ = expandParam(h_, nBatch, 2)
         A, _ = expandParam(A_, nBatch, 3)
         b, _ = expandParam(b_, nBatch, 2)
+
         _, nineq, nz = G.size()
         neq = A.size(1) if A.ndimension() > 0 else 0
         assert(neq > 0 or nineq > 0)
-        assert(inputs.dim() == 2)
-        # nBatch, nz = inputs.size()
         self.neq, self.nineq, self.nz = neq, nineq, nz
 
         self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
 
         zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
-            inputs, Q, G, h, A, b, self.Q_LU, self.S_LU, self.R,
+            Q, p, G, h, A, b, self.Q_LU, self.S_LU, self.R,
             self.verbose)
 
-        self.save_for_backward(inputs, zhats, Q_, G_, h_, A_, b_)
+        self.save_for_backward(zhats, Q_, p_, G_, h_, A_, b_)
         # print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
         return zhats
 
     def backward(self, dl_dzhat):
         start = time.time()
-        inputs, zhats, Q, G, h, A, b = self.saved_tensors
-        nBatch = inputs.size(0)
+        zhats, Q, p, G, h, A, b = self.saved_tensors
+        nBatch = extract_nBatch(Q, p, G, h, A, b)
         Q, Q_e = expandParam(Q, nBatch, 3)
+        p, p_e = expandParam(p, nBatch, 2)
         G, G_e = expandParam(G, nBatch, 3)
         h, h_e = expandParam(h, nBatch, 2)
         A, A_e = expandParam(A, nBatch, 3)
         b, b_e = expandParam(b, nBatch, 2)
 
-        nBatch = inputs.size(0)
         neq, nineq, nz = self.neq, self.nineq, self.nz
 
         d = self.lams/self.slacks
@@ -139,7 +183,7 @@ class QPFunction(Function):
         #          if nineq > 0 else [torch.Tensor().type_as(Q)]*2
         # dA, db = [x.mean(0).squeeze() for x in [dAs, dbs]] \
         #          if neq > 0 else [torch.Tensor().type_as(Q)]*2
-        grads = (dps, dQs, dGs, dhs, dAs, dbs)
+        grads = (dQs, dps, dGs, dhs, dAs, dbs)
         # print('  + Backward pass took {:0.4f} seconds.'.format(time.time()-start))
 
         return grads

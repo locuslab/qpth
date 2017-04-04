@@ -80,7 +80,7 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
         A.requires_grad = True
         b.requires_grad = True
 
-    zhats = qpth.qp.QPFunction()(p, Q, G, h, A, b)
+    zhats = qpth.qp.QPFunction()(Q, p, G, h, A, b)
 
     dl_dzhat = zhats.data - truez
     zhats.backward(dl_dzhat)

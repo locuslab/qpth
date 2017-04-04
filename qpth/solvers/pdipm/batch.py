@@ -5,7 +5,7 @@ from qpth.util import get_sizes
 import numpy as np
 from block import block
 
-def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
+def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
@@ -16,19 +16,19 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
     factor_kkt(S_LU, R, d)
     x, s, z, y = solve_kkt(
         Q_LU, d, G, A, S_LU,
-        inputs, torch.zeros(nBatch, nineq).type_as(Q),
+        p, torch.zeros(nBatch, nineq).type_as(Q),
         -h, -b if neq > 0 else None)
     # D = torch.eye(nineq).repeat(nBatch, 1, 1).type_as(Q)
     # x1, s1, z1, y1 = factor_solve_kkt(
     #     Q, D, G, A,
-    #     inputs, torch.zeros(nBatch, nineq).type_as(Q),
+    #     p, torch.zeros(nBatch, nineq).type_as(Q),
     #     -h.repeat(nBatch, 1),
     #     nb.repeat(nBatch, 1) if b is not None else None)
     # U_Q, U_S, R = pre_factor_kkt(Q, G, A)
     # factor_kkt(U_S, R, d[0])
     # x2, s2, z2, y2 = solve_kkt(
     #     U_Q, d[0], G, A, U_S,
-    #     inputs[0], torch.zeros(nineq).type_as(Q), -h, nb)
+    #     p[0], torch.zeros(nineq).type_as(Q), -h, nb)
     # import IPython, sys; IPython.embed(); sys.exit(-1)
 
     M = torch.min(s, 1)[0].repeat(1, nineq)
@@ -47,7 +47,7 @@ def forward(inputs, Q, G, h, A, b, Q_LU, S_LU, R, verbose=False):
         rx = (torch.bmm(y.unsqueeze(1), A).squeeze(1) if neq > 0 else 0.) + \
              torch.bmm(z.unsqueeze(1), G).squeeze(1) + \
              torch.bmm(x.unsqueeze(1), Q.transpose(1,2)).squeeze(1) + \
-             inputs
+             p
         rs = z
         rz = torch.bmm(x.unsqueeze(1), G.transpose(1, 2)).squeeze(1) + s - h
         ry = torch.bmm(x.unsqueeze(1), A.transpose(1,2)).squeeze(1) - b if neq > 0 else 0.0

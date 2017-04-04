@@ -41,3 +41,11 @@ def expandParam(X, nBatch, nDim):
         return X.unsqueeze(0).expand(*([nBatch]+list(X.size()))), True
     else:
         raise RuntimeError("Unexpected number of dimensions.")
+
+def extract_nBatch(Q, p, G, h, A, b):
+    dims = [3, 2, 3, 2, 3, 2]
+    params = [Q, p, G, h, A, b]
+    for param, dim in zip(params, dims):
+        if param.ndimension() == dim:
+            return param.size(0)
+    return None
