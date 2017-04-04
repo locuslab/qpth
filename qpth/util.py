@@ -48,4 +48,4 @@ def extract_nBatch(Q, p, G, h, A, b):
     for param, dim in zip(params, dims):
         if param.ndimension() == dim:
             return param.size(0)
-    return None
+    return 1
