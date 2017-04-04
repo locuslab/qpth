@@ -59,6 +59,11 @@ class QPFunction(Function):
         that will not change across all of the minibatch examples.
         This function is able to infer such cases.
 
+        If you don't want to use any equality or inequality constraints,
+        you can set the appropriate values to:
+
+            e = Variable(torch.Tensor())
+
         Parameters:
           Q:  A (nBatch, nz, nz) or (nz, nz) Tensor.
           p:  A (nBatch, nz) or (nz) Tensor.
