@@ -74,14 +74,6 @@ class QPFunction(Function):
 
         Returns: \hat z: a (nBatch, nz) Tensor.
         """
-        if not np.all([x.is_cuda for x in [Q_,p_,G_,h_,A_,b_]]):
-            raise RuntimeError("""
-Error: Not using CUDA.
-qpth currently silently fails on the CPU and returns bad solutions.
-We are tracking progress on this issue at:
-https://github.com/locuslab/qpth/issues/4""")
-
-
         start = time.time()
         nBatch = extract_nBatch(Q_, p_, G_, h_, A_, b_)
         Q, _ = expandParam(Q_, nBatch, 3)
