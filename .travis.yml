@@ -41,4 +41,4 @@ matrix:
         python: "3.5"
         addons: true
         install: pip install flake8
-        script: flake8
+        script: flake8 --ignore=E501 qpth/{__init__.py,qp.py,util.py,solvers/{__init__.py,pdipm/{__init__.py,batch.py}}}
