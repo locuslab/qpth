@@ -19,7 +19,7 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose pip
   - source activate test-environment
   - conda install pytorch torchvision -c soumith
-  - pip install numdifftools cvxpy
+  - pip install numdifftools cvxpy block
   - python setup.py install
 
 script:
