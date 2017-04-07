@@ -1,0 +1,44 @@
+language: python
+python:
+  - 3.5
+
+install:
+  - sudo apt-get update
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose
+  - source activate test-environment
+  - conda install pytorch torchvision -c soumith
+  - python setup.py install
+
+script:
+  - nosetests -v -d test.py
+
+deploy:
+  provider: pypi
+  user: bamos
+  password:
+    secure: CHPh76DYCYu4jqYluv9TeZ4+fyGMmQQ/ERzTHnIFzJtE/J9fO0wF9/4OUpUktsN5aR/a7cNnIbiybQpV4eWGhvKh/JcdcIJna32+ngWJheRfMnL2R3Qu+FCX4329pm6Q2IH/N3bqUXrIsQAmlNFUL8i+ahoRdc1siaqNfT4jyDN+3Mp86MVtHOtyxJ8VsxRpyMvQLbbqwWZs8Z9R0Kr6Bcw4ulVIU7P0XY5gOiPOnA50HH+y3+Md0Pr+l23sVGe+vkBx+SS/Mh6HnB/kq++qhg65ezXX7JVTTtt4MSC6VDYpIhxpLdrjI7N/o9xEcKV5twDeDxhilB4jveZhvLufVlTnuK8gteWJjorL/k+lO7ajbZp5fz8akHyXSPvo+0eiCBbvwJDNV/KugN74wlX5Q2yTDEpmwrNFXP2iJfnuOnVRbtyweXq4Wrl2bKroCwMdQ8w/lywz8yqKcRAARjCsPk+JXNMFA4MOSXbEeqWaaJoPpUXmmxw4TFXwkK1mm9uL2d7QYSItz3lEB85+jH2LfFbjbknehavCjkeH7ibEAuTO4GCxPt60W91Jq+b1PI6/Nwm8O0j+pxS0LemVBiRhhRSfUYTwzhcFq371fLOhYFiohFfiCHRgV8yC4Sx4ZpjdwIFlIJM11lRvDuNJzMrwBWCtW/LBjla/VGz678RZkbE=
+  on:
+    distributions: sdist bdist_wheel
+    repo: locuslab/qpth
+    tags: true
+
+matrix:
+    fast_finish: true
+    include:
+        env: LINT_CHECK
+        python: "3.5"
+        addons: true
+        install: pip install flake8
+        script: flake8
