@@ -2,14 +2,15 @@ import cvxpy as cp
 import numpy as np
 import torch
 
+
 def forward_single_np(input_i, Q, G, h, A, b):
     nz, neq, nineq = input_i.shape[0], A.shape[0], G.shape[0]
 
     z_ = cp.Variable(nz)
 
-    obj = cp.Minimize(0.5*cp.quad_form(z_, Q)+input_i.T*z_)
-    eqCon = A*z_ == b if neq > 0 else None
-    ineqCon = G*z_ <= h if nineq > 0 else None
+    obj = cp.Minimize(0.5 * cp.quad_form(z_, Q) + input_i.T * z_)
+    eqCon = A * z_ == b if neq > 0 else None
+    ineqCon = G * z_ <= h if nineq > 0 else None
     cons = [x for x in [eqCon, ineqCon] if x is not None]
     prob = cp.Problem(obj, cons)
     prob.solve()
@@ -19,10 +20,12 @@ def forward_single_np(input_i, Q, G, h, A, b):
     lam = np.array(ineqCon.dual_value).ravel() if ineqCon is not None else None
     return zhat, nu, lam
 
+
 def forward_cvxpy(input, L, G, A, z0, s0):
     assert False
     start = time.time()
-    in_np, L_np, G_np, A_np, z0_np, s0_np = [toNp(v) for v in [input, L, G, A, z0, s0]]
+    in_np, L_np, G_np, A_np, z0_np, s0_np = [
+        toNp(v) for v in [input, L, G, A, z0, s0]]
 
     neq = A_np.shape[0]
     nineq = G_np.shape[0]
@@ -34,7 +37,7 @@ def forward_cvxpy(input, L, G, A, z0, s0):
     zhats, nus, lams = [], [], []
     for i in range(nBatch):
         zhat_i, nu_i, lam_i = self.forward_single_np(in_np[i], L_np, G_np,
-                                                        A_np, z0_np, s0_np)
+                                                     A_np, z0_np, s0_np)
         zhats.append(zhat_i)
         nus.append(nu_i)
         lams.append(lam_i)
@@ -44,6 +47,6 @@ def forward_cvxpy(input, L, G, A, z0, s0):
     self.lams = torch.Tensor(np.array(lams)) if nineq > 0 else None
 
     self.save_for_backward(input, zhats,
-                            L, G, A, z0, s0)
-    print('  + Forward pass took {:0.4f} seconds.'.format(time.time()-start))
+                           L, G, A, z0, s0)
+    print('  + Forward pass took {:0.4f} seconds.'.format(time.time() - start))
     return zhats
