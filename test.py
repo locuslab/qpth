@@ -32,9 +32,9 @@ import qpth.solvers.cvxpy as qp_cvxpy
 import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
 
-from IPython.core import ultratb
-sys.excepthook = ultratb.FormattedTB(mode='Verbose',
-     color_scheme='Linux', call_pdb=1)
+# from IPython.core import ultratb
+# sys.excepthook = ultratb.FormattedTB(mode='Verbose',
+#      color_scheme='Linux', call_pdb=1)
 
 ATOL=1e-2
 RTOL=1e-4
