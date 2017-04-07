@@ -39,7 +39,7 @@ sys.excepthook = ultratb.FormattedTB(mode='Verbose',
 ATOL=1e-2
 RTOL=1e-4
 
-cuda = True
+cuda = False
 verbose = True
 
 def get_grads(nBatch=1, nz=10, neq=1, nineq=3, Qscale=1.,
