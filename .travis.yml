@@ -16,7 +16,7 @@ install:
   - conda update -q conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose numdifftools
   - source activate test-environment
   - conda install pytorch torchvision -c soumith
   - python setup.py install
