@@ -7,6 +7,14 @@ cache:
   - directories:
       - $HOME/.ccache
 
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - gcc-4.8
+            - g++-4.8
+
 install:
   - sudo apt-get update
   - sudo apt-get install -qq git
@@ -28,7 +36,7 @@ install:
 
   # PyTorch
   # - conda install pytorch torchvision -c soumith
-  - git clone https://github.com/pytorch/pytorch.git ~/pytorch && cd ~/pytorch && git checkout 64ee4056d7a73ee2343c536e61fcf4b1787fd630 && export CC="ccache gcc" && export CXX="ccache g++" && ccache --show-stats && travis_retry pip install -r requirements.txt && python setup.py install
+  - git clone https://github.com/pytorch/pytorch.git ~/pytorch && cd ~/pytorch && git checkout 64ee4056d7a73ee2343c536e61fcf4b1787fd630 && unset CCACHE_DISABLE && export CCACHE_DIR=$HOME/.ccache && export CC="ccache gcc-4.8" && export CXX="ccache g++-4.8" && ccache --show-stats && travis_retry pip install -r requirements.txt && python setup.py install
 
   - python setup.py install
 
