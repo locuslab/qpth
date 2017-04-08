@@ -2,8 +2,14 @@ language: python
 python:
   - 3.5
 
+cache:
+  - ccache
+  - directories:
+      - $HOME/.ccache
+
 install:
   - sudo apt-get update
+  - sudo apt-get install -qq git
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
       wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
     else
@@ -18,8 +24,12 @@ install:
 
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose pip
   - source activate test-environment
-  - conda install pytorch torchvision -c soumith
   - pip install numdifftools cvxpy block
+
+  # PyTorch
+  # - conda install pytorch torchvision -c soumith
+  - git clone git@github.com:pytorch/pytorch.git ~/pytorch && cd ~/pytorch && git checkout 64ee4056d7a73ee2343c536e61fcf4b1787fd630 && export CC="ccache gcc-4.8" && export CXX="ccache g++-4.8" && ccache --show-stats && travis_retry pip install -r requirements.txt && python setup.py install
+
   - python setup.py install
 
 script:
