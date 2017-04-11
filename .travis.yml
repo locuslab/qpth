@@ -1,64 +1,56 @@
 language: python
 python:
-  - 3.5
-
+- 3.5
 cache:
-  - ccache
-  - directories:
-      - $HOME/.ccache
-
+- ccache
+- directories:
+  - $HOME/.ccache
 addons:
-    apt:
-        sources:
-            - ubuntu-toolchain-r-test
-        packages:
-            - gcc-4.8
-            - g++-4.8
-
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.8
+    - g++-4.8
 install:
-  - sudo apt-get update
-  - sudo apt-get install -qq git
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda info -a
-
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose pip
-  - conda install -y numpy mkl setuptools cmake gcc cffi
-  - source activate test-environment
-  - pip install numdifftools cvxpy block
-
-  # PyTorch
-  # - conda install pytorch torchvision -c soumith
-  - git clone https://github.com/pytorch/pytorch.git ~/pytorch && cd ~/pytorch && git checkout 64ee4056d7a73ee2343c536e61fcf4b1787fd630 && unset CCACHE_DISABLE && export CCACHE_DIR=$HOME/.ccache && export CC="ccache gcc-4.8" && export CXX="ccache g++-4.8" && ccache --show-stats && travis_retry pip install -r requirements.txt && python setup.py install && cd $TRAVIS_BUILD_DIR
-
-  - python setup.py install
-
+- sudo apt-get update
+- sudo apt-get install -qq git
+- if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
+  -O miniconda.sh; else wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- bash miniconda.sh -b -p $HOME/miniconda
+- export PATH="$HOME/miniconda/bin:$PATH"
+- hash -r
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose
+  pip
+- conda install -y numpy mkl setuptools cmake gcc cffi
+- source activate test-environment
+- pip install numdifftools cvxpy block
+- git clone https://github.com/pytorch/pytorch.git ~/pytorch && cd ~/pytorch && git
+  checkout 64ee4056d7a73ee2343c536e61fcf4b1787fd630 && unset CCACHE_DISABLE && export
+  CCACHE_DIR=$HOME/.ccache && export CC="ccache gcc-4.8" && export CXX="ccache g++-4.8"
+  && ccache --show-stats && travis_retry pip install -r requirements.txt && python
+  setup.py install && cd $TRAVIS_BUILD_DIR
+- python setup.py install
 script:
-  - nosetests -v -d test.py
-
+- nosetests -v -d test.py
 deploy:
   provider: pypi
   user: bamos
   password:
-    secure: CHPh76DYCYu4jqYluv9TeZ4+fyGMmQQ/ERzTHnIFzJtE/J9fO0wF9/4OUpUktsN5aR/a7cNnIbiybQpV4eWGhvKh/JcdcIJna32+ngWJheRfMnL2R3Qu+FCX4329pm6Q2IH/N3bqUXrIsQAmlNFUL8i+ahoRdc1siaqNfT4jyDN+3Mp86MVtHOtyxJ8VsxRpyMvQLbbqwWZs8Z9R0Kr6Bcw4ulVIU7P0XY5gOiPOnA50HH+y3+Md0Pr+l23sVGe+vkBx+SS/Mh6HnB/kq++qhg65ezXX7JVTTtt4MSC6VDYpIhxpLdrjI7N/o9xEcKV5twDeDxhilB4jveZhvLufVlTnuK8gteWJjorL/k+lO7ajbZp5fz8akHyXSPvo+0eiCBbvwJDNV/KugN74wlX5Q2yTDEpmwrNFXP2iJfnuOnVRbtyweXq4Wrl2bKroCwMdQ8w/lywz8yqKcRAARjCsPk+JXNMFA4MOSXbEeqWaaJoPpUXmmxw4TFXwkK1mm9uL2d7QYSItz3lEB85+jH2LfFbjbknehavCjkeH7ibEAuTO4GCxPt60W91Jq+b1PI6/Nwm8O0j+pxS0LemVBiRhhRSfUYTwzhcFq371fLOhYFiohFfiCHRgV8yC4Sx4ZpjdwIFlIJM11lRvDuNJzMrwBWCtW/LBjla/VGz678RZkbE=
+    secure: "PjK85/YPVNE5rICzTrqZ42h69AFWN6Z87ej6Rf74MFM0QJ4gNz9pgomUZSzdDrHfh3aTIIbaQlkBGi0GxlKEo975f1mKCGKPUc8sIF2q8sEdWBxt30jboBUdvGRl5txYPff96zMilrXBfv7j2ZS1iB0X9C0cMcZs0o71S/xA1cRcMyaxQsa8o9U2ALL2yzJB6VlArXSBQlOsWY1tQu8seWSkYHYyWdNkbsJ0mFdzY77wIdZgoI5BiG3fDZA/JWSh279/xa6O/kuNGjvKr1X4wTizvFnioFhvbYuJeRFtfTDuYjLSpXK8ZURyBwhgDcBRauSbAxXeJlP3my0Kuo+mAT76OHcMW/3mXElsVPhPbIX/jKxt7/jbXz8n913wpaEFIbFRZGnN3fhQry/e14ESIh6ZkMgSYlX/iOoePSqfNTz4RApsx+LcfdGBrQq5LM/4KyWp/3uijmrwabo1hxZ5VqEvazO8UFpKwRmYmTazedUixHuvWTKUpzqYRT1l2GJ8Cr3O8S7RN5gCrFUdmYxtJZMhbDvOUlB4kVp244ZPFEe2qHpoxm8BwrBO5Q6l0OeXZJpqdS99uo0Nt4qNQAOWb8xC9YJrZQwelJw0Q5UGv7Vjk6D9dK/GlHmI72lUzbtuYiIYlyoVy/00Q8QW/f3C40VBasW3a123k4i97C70qlg="
   on:
     distributions: sdist bdist_wheel
     repo: locuslab/qpth
     tags: true
-
 matrix:
-    fast_finish: true
-    include:
-        env: LINT_CHECK
-        python: "3.5"
-        addons: true
-        install: pip install flake8
-        script: flake8 --ignore=E501 qpth/{__init__.py,qp.py,util.py,solvers/{__init__.py,pdipm/{__init__.py,batch.py}}}
+  fast_finish: true
+  include:
+    env: LINT_CHECK
+    python: '3.5'
+    addons: true
+    install: pip install flake8
+    script: flake8 --ignore=E501 qpth/{__init__.py,qp.py,util.py,solvers/{__init__.py,pdipm/{__init__.py,batch.py}}}
