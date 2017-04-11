@@ -17,7 +17,7 @@ addons:
 
 install:
   - sudo apt-get update
-  - sudo apt-get install -qq git libopenblas-dev
+  - sudo apt-get install -qq git
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
       wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
     else
@@ -31,6 +31,7 @@ install:
   - conda info -a
 
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose pip
+  - conda install -y numpy mkl setuptools cmake gcc cffi
   - source activate test-environment
   - pip install numdifftools cvxpy block
 
