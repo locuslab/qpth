@@ -4,7 +4,7 @@ import torch
 
 
 def forward_single_np(Q, p, G, h, A, b):
-    nz, neq, nineq = p.shape[0], A.shape[0], G.shape[0]
+    nz, neq, nineq = p.shape[0], A.shape[0] if A is not None else 0, G.shape[0]
 
     z_ = cp.Variable(nz)
 

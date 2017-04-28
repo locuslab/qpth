@@ -96,11 +96,17 @@ class QPFunction(Function):
             lams = torch.Tensor(nBatch, self.nineq).type_as(Q)
             nus = torch.Tensor(nBatch, self.neq).type_as(Q)
             for i in range(nBatch):
+                Ai, bi = (A[i], b[i]) if neq > 0 else (None, None)
                 zhati, nui, lami = solvers.cvxpy.forward_single_np(
-                    *[x.cpu().numpy() for x in (Q[i], p[i], G[i], h[i], A[i], b[i])])
+                    *[x.cpu().numpy() if x is not None else None
+                      for x in (Q[i], p[i], G[i], h[i], Ai, bi)])
                 zhats[i] = torch.Tensor(zhati)
                 lams[i] = torch.Tensor(lami)
-                nus[i] = torch.Tensor(nui)
+                if neq > 0:
+                    nus[i] = torch.Tensor(nui)
+
+            self.lams = lams
+            self.nus = nus
         else:
             assert False
 
