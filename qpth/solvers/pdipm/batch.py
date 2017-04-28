@@ -4,6 +4,20 @@ from qpth.util import get_sizes
 from block import block
 
 
+INACC_ERR = """
+--------
+qpth warning: Returning an inaccurate and potentially incorrect solutino.
+
+Some residual is large.
+Your problem may be infeasible or difficult.
+
+You can try using the CVXPY solver to see if your problem is feasible
+and you can use the verbose option to check the convergence status of
+our solver while increasing the number of iterations.
+--------
+"""
+
+
 def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, maxIter=20):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
@@ -90,6 +104,8 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, ma
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
         if nNotImproved == notImprovedLim or best['resids'].max() < 1e-12:
+            if best['resids'].max() > 1.:
+                print(INACC_ERR)
             return best['x'], best['y'], best['z'], best['s']
 
         # L_Q, L_S, R_ = pre_factor_kkt(Q, G, A)
@@ -166,6 +182,8 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, ma
         z += alpha_nineq * dz
         y = y + alpha_neq * dy if neq > 0 else None
 
+    if best['resids'].max() > 1.:
+        print(INACC_ERR)
     return best['x'], best['y'], best['z'], best['s']
 
 
