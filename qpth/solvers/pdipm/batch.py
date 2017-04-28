@@ -4,7 +4,7 @@ from qpth.util import get_sizes
 from block import block
 
 
-def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False):
+def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, maxIter=20):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
@@ -41,7 +41,7 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False):
     best = {'resids': None, 'x': None, 'z': None, 's': None, 'y': None}
     nNotImproved = 0
 
-    for i in range(20):
+    for i in range(maxIter):
         # affine scaling direction
         rx = (torch.bmm(y.unsqueeze(1), A).squeeze(1) if neq > 0 else 0.) + \
             torch.bmm(z.unsqueeze(1), G).squeeze(1) + \
@@ -89,7 +89,7 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False):
             if neq > 0:
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
-        if nNotImproved == 3 or best['resids'].max() < 1e-12:
+        if nNotImproved == notImprovedLim or best['resids'].max() < 1e-12:
             return best['x'], best['y'], best['z'], best['s']
 
         # L_Q, L_S, R_ = pre_factor_kkt(Q, G, A)

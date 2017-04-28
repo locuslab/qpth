@@ -3,12 +3,12 @@ import numpy as np
 import torch
 
 
-def forward_single_np(input_i, Q, G, h, A, b):
-    nz, neq, nineq = input_i.shape[0], A.shape[0], G.shape[0]
+def forward_single_np(Q, p, G, h, A, b):
+    nz, neq, nineq = p.shape[0], A.shape[0], G.shape[0]
 
     z_ = cp.Variable(nz)
 
-    obj = cp.Minimize(0.5 * cp.quad_form(z_, Q) + input_i.T * z_)
+    obj = cp.Minimize(0.5 * cp.quad_form(z_, Q) + p.T * z_)
     eqCon = A * z_ == b if neq > 0 else None
     ineqCon = G * z_ <= h if nineq > 0 else None
     cons = [x for x in [eqCon, ineqCon] if x is not None]

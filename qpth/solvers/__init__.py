@@ -1,4 +1,3 @@
-__all__ = ['pdipm']
+__all__ = ['cvxpy', 'pdipm']
 
-# from . importsingle
-# import .batch
+from . import cvxpy

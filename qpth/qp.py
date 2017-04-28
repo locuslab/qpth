@@ -2,13 +2,25 @@ import torch
 from torch.autograd import Function
 
 from .util import bger, expandParam, extract_nBatch
+from . import solvers
 from .solvers.pdipm import batch as pdipm_b
 # from .solvers.pdipm import single as pdipm_s
 
+from enum import Enum
+
+
+class QPSolvers(Enum):
+    PDIPM_BATCHED = 1
+    CVXPY = 2
+
 
 class QPFunction(Function):
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, notImprovedLim=3, maxIter=20,
+                 solver=QPSolvers.PDIPM_BATCHED):
         self.verbose = verbose
+        self.notImprovedLim = notImprovedLim
+        self.maxIter = maxIter
+        self.solver = solver
 
     def forward(self, Q_, p_, G_, h_, A_, b_):
         """Solve a batch of QPs.
@@ -75,9 +87,22 @@ class QPFunction(Function):
 
         self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
 
-        zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
-            Q, p, G, h, A, b, self.Q_LU, self.S_LU, self.R,
-            self.verbose)
+        if self.solver == QPSolvers.PDIPM_BATCHED:
+            zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
+                Q, p, G, h, A, b, self.Q_LU, self.S_LU, self.R,
+                self.verbose, self.notImprovedLim, self.maxIter)
+        elif self.solver == QPSolvers.CVXPY:
+            zhats = torch.Tensor(nBatch, self.nz).type_as(Q)
+            lams = torch.Tensor(nBatch, self.nineq).type_as(Q)
+            nus = torch.Tensor(nBatch, self.neq).type_as(Q)
+            for i in range(nBatch):
+                zhati, nui, lami = solvers.cvxpy.forward_single_np(
+                    *[x.cpu().numpy() for x in (Q[i], p[i], G[i], h[i], A[i], b[i])])
+                zhats[i] = torch.Tensor(zhati)
+                lams[i] = torch.Tensor(lami)
+                nus[i] = torch.Tensor(nui)
+        else:
+            assert False
 
         self.save_for_backward(zhats, Q_, p_, G_, h_, A_, b_)
         return zhats
