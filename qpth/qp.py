@@ -95,18 +95,23 @@ class QPFunction(Function):
             zhats = torch.Tensor(nBatch, self.nz).type_as(Q)
             lams = torch.Tensor(nBatch, self.nineq).type_as(Q)
             nus = torch.Tensor(nBatch, self.neq).type_as(Q)
+            slacks = torch.Tensor(nBatch, self.nineq).type_as(Q)
             for i in range(nBatch):
                 Ai, bi = (A[i], b[i]) if neq > 0 else (None, None)
-                zhati, nui, lami = solvers.cvxpy.forward_single_np(
+                zhati, nui, lami, si = solvers.cvxpy.forward_single_np(
                     *[x.cpu().numpy() if x is not None else None
                       for x in (Q[i], p[i], G[i], h[i], Ai, bi)])
+                # if zhati[0] is None:
+                #     import IPython, sys; IPython.embed(); sys.exit(-1)
                 zhats[i] = torch.Tensor(zhati)
                 lams[i] = torch.Tensor(lami)
+                slacks[i] = torch.Tensor(si)
                 if neq > 0:
                     nus[i] = torch.Tensor(nui)
 
             self.lams = lams
             self.nus = nus
+            self.slacks = slacks
         else:
             assert False
 
