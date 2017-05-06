@@ -18,7 +18,8 @@ def forward_single_np(Q, p, G, h, A, b):
         ineqCon = slacks = slacksCon = None
     cons = [x for x in [eqCon, ineqCon, slacksCon] if x is not None]
     prob = cp.Problem(obj, cons)
-    prob.solve() #solver=cp.SCS, max_iters=10000, verbose=False)
+    prob.solve() #solver=cp.SCS, max_iters=5000, verbose=False)
+    # prob.solve(solver=cp.SCS, max_iters=10000, verbose=True)
     assert('optimal' in prob.status)
     zhat = np.array(z_.value).ravel()
     nu = np.array(eqCon.dual_value).ravel() if eqCon is not None else None
@@ -27,7 +28,8 @@ def forward_single_np(Q, p, G, h, A, b):
         slacks = np.array(slacks.value).ravel()
     else:
         lam = slacks = None
-    return zhat, nu, lam, slacks
+
+    return prob.value, zhat, nu, lam, slacks
 
 
 def forward_cvxpy(input, L, G, A, z0, s0):

@@ -15,8 +15,9 @@ class QPSolvers(Enum):
 
 
 class QPFunction(Function):
-    def __init__(self, verbose=False, notImprovedLim=3, maxIter=20,
-                 solver=QPSolvers.PDIPM_BATCHED):
+    def __init__(self, eps=1e-12, verbose=0, notImprovedLim=3,
+                 maxIter=20, solver=QPSolvers.PDIPM_BATCHED):
+        self.eps = eps
         self.verbose = verbose
         self.notImprovedLim = notImprovedLim
         self.maxIter = maxIter
@@ -85,20 +86,20 @@ class QPFunction(Function):
         assert(neq > 0 or nineq > 0)
         self.neq, self.nineq, self.nz = neq, nineq, nz
 
-        self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
-
         if self.solver == QPSolvers.PDIPM_BATCHED:
+            self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
             zhats, self.nus, self.lams, self.slacks = pdipm_b.forward(
                 Q, p, G, h, A, b, self.Q_LU, self.S_LU, self.R,
-                self.verbose, self.notImprovedLim, self.maxIter)
+                self.eps, self.verbose, self.notImprovedLim, self.maxIter)
         elif self.solver == QPSolvers.CVXPY:
+            vals = torch.Tensor(nBatch).type_as(Q)
             zhats = torch.Tensor(nBatch, self.nz).type_as(Q)
             lams = torch.Tensor(nBatch, self.nineq).type_as(Q)
             nus = torch.Tensor(nBatch, self.neq).type_as(Q)
             slacks = torch.Tensor(nBatch, self.nineq).type_as(Q)
             for i in range(nBatch):
                 Ai, bi = (A[i], b[i]) if neq > 0 else (None, None)
-                zhati, nui, lami, si = solvers.cvxpy.forward_single_np(
+                vals[i], zhati, nui, lami, si = solvers.cvxpy.forward_single_np(
                     *[x.cpu().numpy() if x is not None else None
                       for x in (Q[i], p[i], G[i], h[i], Ai, bi)])
                 # if zhati[0] is None:
@@ -109,6 +110,7 @@ class QPFunction(Function):
                 if neq > 0:
                     nus[i] = torch.Tensor(nui)
 
+            self.vals = vals
             self.lams = lams
             self.nus = nus
             self.slacks = slacks

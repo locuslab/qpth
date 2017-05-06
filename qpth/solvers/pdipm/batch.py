@@ -18,7 +18,7 @@ our solver while increasing the number of iterations.
 """
 
 
-def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, maxIter=20):
+def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLim=3, maxIter=20):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
@@ -78,9 +78,9 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, ma
         except:
             return best['x'], best['y'], best['z'], best['s']
 
-        if verbose:
+        if verbose == 1:
             print('iter: {}, pri_resid: {:.5e}, dual_resid: {:.5e}, mu: {:.5e}'.format(
-                i, pri_resid[0], dual_resid[0], mu[0]))
+                i, pri_resid.mean(), dual_resid.mean(), mu.mean()))
         if best['resids'] is None:
             best['resids'] = resids
             best['x'] = x.clone()
@@ -103,8 +103,8 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, ma
             if neq > 0:
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
-        if nNotImproved == notImprovedLim or best['resids'].max() < 1e-12:
-            if best['resids'].max() > 1.:
+        if nNotImproved == notImprovedLim or best['resids'].max() < eps or mu.min() > 1e100:
+            if best['resids'].max() > 1. and verbose >= 0:
                 print(INACC_ERR)
             return best['x'], best['y'], best['z'], best['s']
 
@@ -182,7 +182,7 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, verbose=False, notImprovedLim=3, ma
         z += alpha_nineq * dz
         y = y + alpha_neq * dy if neq > 0 else None
 
-    if best['resids'].max() > 1.:
+    if best['resids'].max() > 1. and verbose >= 0:
         print(INACC_ERR)
     return best['x'], best['y'], best['z'], best['s']
 
@@ -274,7 +274,14 @@ def pre_factor_kkt(Q, G, A):
     """ Perform all one-time factorizations and cache relevant matrix products"""
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    Q_LU = Q.btrifact()
+    try:
+        Q_LU = Q.btrifact()
+    except:
+        raise RuntimeError("""
+qpth Error: Cannot perform LU factorization on Q.
+Please make sure that your Q matrix is PSD and has
+a non-zero diagonal.
+""")
 
     # S = [ A Q^{-1} A^T        A Q^{-1} G^T          ]
     #     [ G Q^{-1} A^T        G Q^{-1} G^T + D^{-1} ]

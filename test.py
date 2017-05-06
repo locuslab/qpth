@@ -62,7 +62,7 @@ def get_grads(nBatch=1, nz=10, neq=1, nineq=3, Qscale=1.,
     truez = npr.randn(nBatch,nz)
 
     Q, p, G, h, A, b, truez = [x.astype(np.float64) for x in [Q, p, G, h, A, b, truez]]
-    zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p[0], G, h, A, b)
+    _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p[0], G, h, A, b)
 
     grads = get_grads_torch(Q, p, G, h, A, b, truez)
     return [p[0], Q, G, h, A, b, truez], grads
@@ -99,7 +99,7 @@ def test_dl_dp():
         nz=nz, neq=neq, nineq=nineq, Qscale=100., Gscale=100., Ascale=100.)
 
     def f(p):
-        zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
+        _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
         return 0.5*np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
@@ -116,7 +116,7 @@ def test_dl_dG():
 
     def f(G):
         G = G.reshape(nineq,nz)
-        zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
+        _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
         return 0.5*np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
@@ -135,7 +135,7 @@ def test_dl_dh():
         nz=nz, neq=neq, nineq=nineq, Qscale=1., Gscale=1.)
 
     def f(h):
-        zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
+        _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
         return 0.5*np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
@@ -152,7 +152,7 @@ def test_dl_dA():
 
     def f(A):
         A = A.reshape(neq,nz)
-        zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
+        _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
         return 0.5*np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
@@ -170,7 +170,7 @@ def test_dl_db():
         nz=nz, neq=neq, nineq=nineq, Qscale=100., Gscale=100., Ascale=100.)
 
     def f(b):
-        zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
+        _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
         return 0.5*np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
