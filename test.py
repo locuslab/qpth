@@ -27,6 +27,7 @@ from nose.tools import with_setup, assert_almost_equal
 import sys
 sys.path.append('..')
 import qpth
+from qpth.util import bger, bdiag, expandParam, extract_nBatch
 import qpth.solvers.cvxpy as qp_cvxpy
 
 import qpth.solvers.pdipm.single as pdipm_s
@@ -36,44 +37,49 @@ import qpth.solvers.pdipm.batch as pdipm_b
 # sys.excepthook = ultratb.FormattedTB(mode='Verbose',
 #      color_scheme='Linux', call_pdb=1)
 
-ATOL=1e-2
-RTOL=1e-4
+ATOL = 1e-2
+RTOL = 1e-4
 
 cuda = False
 verbose = True
 
+
 def get_grads(nBatch=1, nz=10, neq=1, nineq=3, Qscale=1.,
               Gscale=1., hscale=1., Ascale=1., bscale=1.):
-    assert(nBatch==1)
+    assert(nBatch == 1)
     npr.seed(1)
-    L = np.random.randn(nz,nz)
-    Q = Qscale*L.dot(L.T)
-    G = Gscale*npr.randn(nineq,nz)
+    L = np.random.randn(nz, nz)
+    Q = Qscale * L.dot(L.T)
+    G = Gscale * npr.randn(nineq, nz)
     # h = hscale*npr.randn(nineq)
     z0 = npr.randn(nz)
     s0 = npr.rand(nineq)
-    h = G.dot(z0)+s0
-    A = Ascale*npr.randn(neq,nz)
+    h = G.dot(z0) + s0
+    A = Ascale * npr.randn(neq, nz)
     # b = bscale*npr.randn(neq)
     b = A.dot(z0)
 
-    p = npr.randn(nBatch,nz)
+    p = npr.randn(nBatch, nz)
     # print(np.linalg.norm(p))
-    truez = npr.randn(nBatch,nz)
+    truez = npr.randn(nBatch, nz)
 
-    Q, p, G, h, A, b, truez = [x.astype(np.float64) for x in [Q, p, G, h, A, b, truez]]
+    Q, p, G, h, A, b, truez = [x.astype(np.float64) for x in
+                               [Q, p, G, h, A, b, truez]]
     _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p[0], G, h, A, b)
 
     grads = get_grads_torch(Q, p, G, h, A, b, truez)
     return [p[0], Q, G, h, A, b, truez], grads
 
+
 def get_grads_torch(Q, p, G, h, A, b, truez):
-    Q, p, G, h, A, b, truez = [torch.DoubleTensor(x) for x in [Q, p, G, h, A, b, truez]]
+    Q, p, G, h, A, b, truez = [torch.DoubleTensor(x) for x in
+                               [Q, p, G, h, A, b, truez]]
     if cuda:
         Q, p, G, h, A, b, truez = [x.cuda() for x in [Q, p, G, h, A, b, truez]]
 
     Q, p, G, h, A, b = [Variable(x) for x in [Q, p, G, h, A, b]]
-    for x in [Q, p, G, h]: x.requires_grad = True
+    for x in [Q, p, G, h]:
+        x.requires_grad = True
 
     nBatch = 1
     if b.nelement() > 0:
@@ -93,6 +99,7 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
         grads += [None, None]
     return grads
 
+
 def test_dl_dp():
     nz, neq, nineq = 10, 2, 3
     [p, Q, G, h, A, b, truez], [dQ, dp, dG, dh, dA, db] = get_grads(
@@ -100,7 +107,7 @@ def test_dl_dp():
 
     def f(p):
         _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
-        return 0.5*np.sum(np.square(zhat - truez))
+        return 0.5 * np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
     dp_fd = df(p)
@@ -109,15 +116,16 @@ def test_dl_dp():
         print('dp: ', dp)
     npt.assert_allclose(dp_fd, dp, rtol=RTOL, atol=ATOL)
 
+
 def test_dl_dG():
     nz, neq, nineq = 10, 0, 3
     [p, Q, G, h, A, b, truez], [dQ, dp, dG, dh, dA, db] = get_grads(
         nz=nz, neq=neq, nineq=nineq)
 
     def f(G):
-        G = G.reshape(nineq,nz)
+        G = G.reshape(nineq, nz)
         _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
-        return 0.5*np.sum(np.square(zhat - truez))
+        return 0.5 * np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
     dG_fd = df(G.ravel()).reshape(nineq, nz)
@@ -136,7 +144,7 @@ def test_dl_dh():
 
     def f(h):
         _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
-        return 0.5*np.sum(np.square(zhat - truez))
+        return 0.5 * np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
     dh_fd = df(h)
@@ -145,15 +153,16 @@ def test_dl_dh():
         print('dh: ', dh)
     npt.assert_allclose(dh_fd, dh, rtol=RTOL, atol=ATOL)
 
+
 def test_dl_dA():
     nz, neq, nineq = 10, 3, 1
     [p, Q, G, h, A, b, truez], [dQ, dp, dG, dh, dA, db] = get_grads(
         nz=nz, neq=neq, nineq=nineq, Qscale=100., Gscale=100., Ascale=100.)
 
     def f(A):
-        A = A.reshape(neq,nz)
+        A = A.reshape(neq, nz)
         _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
-        return 0.5*np.sum(np.square(zhat - truez))
+        return 0.5 * np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
     dA_fd = df(A.ravel()).reshape(neq, nz)
@@ -164,6 +173,7 @@ def test_dl_dA():
         print('dA: ', dA)
     npt.assert_allclose(dA_fd, dA, rtol=RTOL, atol=ATOL)
 
+
 def test_dl_db():
     nz, neq, nineq = 10, 3, 1
     [p, Q, G, h, A, b, truez], [dQ, dp, dG, dh, dA, db] = get_grads(
@@ -171,7 +181,7 @@ def test_dl_db():
 
     def f(b):
         _, zhat, nu, lam, slacks = qp_cvxpy.forward_single_np(Q, p, G, h, A, b)
-        return 0.5*np.sum(np.square(zhat - truez))
+        return 0.5 * np.sum(np.square(zhat - truez))
 
     df = nd.Gradient(f)
     db_fd = df(b)
@@ -181,9 +191,71 @@ def test_dl_db():
     npt.assert_allclose(db_fd, db, rtol=RTOL, atol=ATOL)
 
 
-if __name__=='__main__':
+def get_kkt_problem():
+    def cast(m):
+        # return m.cuda().double()
+        return m.double()
+
+    nBatch, nx, nineq, neq = 2, 5, 4, 3
+    Q = cast(torch.randn(nx, nx))
+    Q = Q.mm(Q.t())
+    p = cast(torch.randn(nx))
+    G = cast(torch.randn(nBatch, nineq, nx))
+    h = cast(torch.zeros(nBatch, nineq))
+    A = cast(torch.randn(neq, nx))
+    b = cast(torch.randn(neq))
+
+    nBatch = extract_nBatch(Q, p, G, h, A, b)
+    Q, _ = expandParam(Q, nBatch, 3)
+    p, _ = expandParam(p, nBatch, 2)
+    G, _ = expandParam(G, nBatch, 3)
+    h, _ = expandParam(h, nBatch, 2)
+    A, _ = expandParam(A, nBatch, 3)
+    b, _ = expandParam(b, nBatch, 2)
+
+    d = torch.rand(nBatch, nineq).type_as(Q)
+    D = bdiag(d)
+    rx = torch.rand(nBatch, nx).type_as(Q)
+    rs = torch.rand(nBatch, nineq).type_as(Q)
+    rz = torch.rand(nBatch, nineq).type_as(Q)
+    ry = torch.rand(nBatch, neq).type_as(Q)
+
+    return Q, p, G, h, A, b, d, D, rx, rs, rz, ry
+
+
+def test_lu_kkt_solver():
+    Q, p, G, h, A, b, d, D, rx, rs, rz, ry = get_kkt_problem()
+
+    dx, ds, dz, dy = pdipm_b.factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry)
+
+    Q_LU, S_LU, R = pdipm_b.pre_factor_kkt(Q, G, A)
+    pdipm_b.factor_kkt(S_LU, R, d)
+    dx_, ds_, dz_, dy_ = pdipm_b.solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+
+    npt.assert_allclose(dx.numpy(), dx_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(ds.numpy(), ds_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(dz.numpy(), dz_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(dy.numpy(), dy_.numpy(), rtol=RTOL, atol=ATOL)
+
+
+def test_ir_kkt_solver():
+    Q, p, G, h, A, b, d, D, rx, rs, rz, ry = get_kkt_problem()
+
+    dx, ds, dz, dy = pdipm_b.factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry)
+    dx_, ds_, dz_, dy_ = pdipm_b.solve_kkt_ir(
+        Q, D, G, A, rx, rs, rz, ry, niter=1)
+
+    npt.assert_allclose(dx.numpy(), dx_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(ds.numpy(), ds_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(dz.numpy(), dz_.numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(dy.numpy(), dy_.numpy(), rtol=RTOL, atol=ATOL)
+
+
+if __name__ == '__main__':
     test_dl_dp()
     test_dl_dG()
     test_dl_dh()
     test_dl_dA()
     test_dl_db()
+    test_lu_kkt_solver()
+    test_ir_kkt_solver()
