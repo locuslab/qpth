@@ -1,6 +1,6 @@
 import torch
 from enum import Enum
-from block import block
+# from block import block
 
 from qpth.util import get_sizes, bdiag
 
@@ -272,7 +272,7 @@ def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry, niter=1):
                         dx, ds, dz, dy, rx, rs, rz, ry)
     resx, ress, resz, resy = res
     res = torch.cat(resx)
-    res_norm = torch.norm(res)
+    # res_norm = torch.norm(res)
     # print('residual norm: ', res_norm)
     for k in range(niter):
         ddx, dds, ddz, ddy = factor_solve_kkt_reg(Q_tilde, D, G, A, -resx, -ress, -resz,
@@ -284,7 +284,7 @@ def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry, niter=1):
                             dx, ds, dz, dy, rx, rs, rz, ry)
         resx, ress, resz, resy = res
         res = torch.cat(resx)
-        res_norm = torch.norm(res)
+        # res_norm = torch.norm(res)
         # print('residual norm: ', res_norm)
 
     return dx, ds, dz, dy
@@ -314,8 +314,8 @@ def factor_solve_kkt_reg(Q_tilde, D, G, A, rx, rs, rz, ry, eps):
     invH_A_ = A_.transpose(1, 2).btrisolve(*H_LU)
     invH_g_ = g_.btrisolve(*H_LU)
 
-    S_ = torch.bmm(A_, invH_A_) - \
-         eps * torch.eye(neq + nineq).type_as(Q_tilde).repeat(nBatch, 1, 1)
+    S_ = torch.bmm(A_, invH_A_)
+    S_ -= eps * torch.eye(neq + nineq).type_as(Q_tilde).repeat(nBatch, 1, 1)
     S_LU = S_.btrifact()
     t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze(1) - h_
     w_ = -t_.btrisolve(*S_LU)
