@@ -1,7 +1,8 @@
 import torch
-from qpth.util import get_sizes
-
+from enum import Enum
 from block import block
+
+from qpth.util import get_sizes, bdiag
 
 
 INACC_ERR = """
@@ -18,25 +19,44 @@ our solver while increasing the number of iterations.
 """
 
 
+class KKTSolvers(Enum):
+    LU_OPT = 1
+    IR_UNOPT = 2
+
+
 def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLim=3, maxIter=20):
     """
     Q_LU, S_LU, R = pre_factor_kkt(Q, G, A)
     """
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
+    solver = KKTSolvers.LU_OPT
+    # solver = KKTSolvers.IR_UNOPT
+
     # Find initial values
-    d = torch.ones(nBatch, nineq).type_as(Q)
-    factor_kkt(S_LU, R, d)
-    x, s, z, y = solve_kkt(
-        Q_LU, d, G, A, S_LU,
-        p, torch.zeros(nBatch, nineq).type_as(Q),
-        -h, -b if neq > 0 else None)
+    if solver == KKTSolvers.LU_OPT:
+        d = torch.ones(nBatch, nineq).type_as(Q)
+        factor_kkt(S_LU, R, d)
+        x, s, z, y = solve_kkt(
+            Q_LU, d, G, A, S_LU,
+            p, torch.zeros(nBatch, nineq).type_as(Q),
+            -h, -b if neq > 0 else None)
+    elif solver == KKTSolvers.IR_UNOPT:
+        D = torch.eye(nineq).repeat(nBatch, 1, 1).type_as(Q)
+        x, s, z, y = solve_kkt_ir(
+            Q, D, G, A, p,
+            torch.zeros(nBatch, nineq).type_as(Q),
+            -h, -b if b is not None else None)
+        import sys; sys.exit(-1)
+    else:
+        assert False
     # D = torch.eye(nineq).repeat(nBatch, 1, 1).type_as(Q)
     # x1, s1, z1, y1 = factor_solve_kkt(
     #     Q, D, G, A,
     #     p, torch.zeros(nBatch, nineq).type_as(Q),
     #     -h.repeat(nBatch, 1),
     #     nb.repeat(nBatch, 1) if b is not None else None)
+    # import IPython, sys; IPython.embed(); sys.exit(-1)
     # U_Q, U_S, R = pre_factor_kkt(Q, G, A)
     # factor_kkt(U_S, R, d[0])
     # x2, s2, z2, y2 = solve_kkt(
@@ -113,12 +133,16 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
         # dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
         #     L_Q, d[0], G, A, L_S, rx[0], rs[0], rz[0], ry[0])
         # TODO: Move factorization back here.
-        dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
-            Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+        if solver == KKTSolvers.LU_OPT:
+            dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
+                Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+        else:
+            assert False
 
-        # D = diaged(d)
+        # D = bdiag(d)
         # dx_aff1, ds_aff1, dz_aff1, dy_aff1 = factor_solve_kkt(
         #     Q, D, G, A, rx, rs, rz, ry)
+        # import IPython, sys; IPython.embed(); sys.exit(-1)
         # dx_aff2, ds_aff2, dz_aff2, dy_aff2 = factor_solve_kkt(
         #     Q, D[0], G, A, rx[0], rs[0], 0, ry[0])
 
@@ -140,7 +164,6 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
         #     U_Q, d, G, A, U_S, torch.zeros(nz).type_as(Q),
         #     (-mu*sig*torch.ones(nineq).type_as(Q) + ds_aff*dz_aff)/s,
         #     torch.zeros(nineq).type_as(Q), torch.zeros(neq).type_as(Q), neq, nz)
-        # D = diaged(d)
         # dx_cor0, ds_cor0, dz_cor0, dy_cor0 = factor_solve_kkt(Q, D[0], G, A,
         #     torch.zeros(nz).type_as(Q),
         #     (-mu[0]*sig[0]*torch.ones(nineq).type_as(Q)+ds_aff[0]*dz_aff[0])/s[0],
@@ -149,10 +172,15 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
         rs = ((-mu * sig).repeat(nineq, 1).t() + ds_aff * dz_aff) / s
         rz = torch.zeros(nBatch, nineq).type_as(Q)
         ry = torch.zeros(nBatch, neq).type_as(Q)
-        # dx_cor1, ds_cor1, dz_cor1, dy_cor1 = factor_solve_kkt(
-        #     Q, D, G, A, rx, rs, rz, ry)
-        dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
-            Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+        if solver == KKTSolvers.LU_OPT:
+            dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
+                Q_LU, d, G, A, S_LU, rx, rs, rz, ry)
+        elif solver == KKTSolvers.DIRECT:
+            D = bdiag(d)
+            dx_cor, ds_cor, dz_cor, dy_cor = factor_solve_kkt(
+                Q, D, G, A, rx, rs, rz, ry)
+        else:
+            assert False
 
         dx = dx_aff + dx_cor
         ds = ds_aff + ds_cor
@@ -194,46 +222,83 @@ def get_step(v, dv):
     return a.min(1)[0].squeeze()
 
 
+# Inefficient iterative refinement.
+def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry):
+    nineq, nz, neq, nBatch = get_sizes(G, A)
+    K1 = torch.cat([Q, torch.zeros(nBatch, nz,nineq).type_as(Q), G.transpose(1,2), A.transpose(1,2)], 2)
+    K2 = torch.cat([torch.zeros(nBatch, nineq, nz).type_as(Q), D,
+                    torch.zeros(nBatch, nineq, neq+nineq).type_as(Q)], 2)
+    K3 = torch.cat([G, torch.eye(nineq).repeat(nBatch, 1, 1).type_as(Q),
+                    torch.zeros(nBatch, nineq, neq+nineq).type_as(Q)], 2)
+    K4 = torch.cat([A, torch.zeros(nBatch, neq, neq+2*nineq).type_as(Q)], 2)
+    K = torch.cat([K1, K2, K3, K4], 1)
+    r = -torch.cat([rx, rs, rz, ry], 1) # TODO: I think this should be negated, but not sure.
+
+    eps = 1e-7
+    p = torch.cat((eps*torch.ones(nz+nineq), -eps*torch.ones(nineq+neq))).type_as(Q).repeat(nBatch, 1)
+    P = bdiag(p)
+    K_tilde = K+P
+
+    K_tilde_LU = K_tilde.btrifact()
+    P, L, U = torch.btriunpack(*K_tilde_LU)
+    print('dtype = ', type(Q))
+    print('eps = ', eps)
+    print('||PLU-\\tilde K|| = ', torch.norm(P.bmm(L.bmm(U))-K_tilde))
+    # import sys; sys.exit(-1)
+    lk = r.btrisolve(*K_tilde_LU)
+    print('||\\tilde K l0 - r||: ', torch.norm(K_tilde.bmm(lk.unsqueeze(2))-r))
+    res = r - K.bmm(lk.unsqueeze(2)).squeeze()
+    res_norm = torch.norm(res)
+    print('||K l0 - r||: ', res_norm)
+    for k in range(10):
+        dlk = res.btrisolve(*K_tilde_LU)
+        print('||\\tilde K dlk - (r - K lk)||: ', torch.norm(K_tilde.bmm(dlk.unsqueeze(2))-(res)))
+        # print(res, dlk)
+        # import IPython, sys; IPython.embed(); sys.exit(-1)
+        lk += dlk
+        res = r-K.bmm(lk.unsqueeze(2))
+        res_norm = torch.norm(res)
+        print('||K lk - r||: ', res_norm)
+
+    i = 0
+    dx = lk[:, i:i+nz]
+    i += nz
+    ds = lk[:, i:i+nineq]
+    i += nineq
+    dz = lk[:, i:i+nineq]
+    i += nineq
+    dy = lk[:, i:i+neq]
+
+    return dx, ds, dz, dy
+
 def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
+    H_ = torch.zeros(nBatch, nz + nineq, nz + nineq).type_as(Q)
+    H_[:, :nz, :nz] = Q
+    H_[:, -nineq:, -nineq:] = D
     if neq > 0:
-        # import IPython, sys; IPython.embed(); sys.exit(-1)
         # H_ = torch.cat([torch.cat([Q, torch.zeros(nz,nineq).type_as(Q)], 1),
         #                 torch.cat([torch.zeros(nineq, nz).type_as(Q), D], 1)], 0)
-        # A_ = torch.cat([torch.cat([G, torch.eye(nineq).type_as(Q)], 1),
-        #                 torch.cat([A, torch.zeros(neq, nineq).type_as(Q)], 1)], 0)
-        # g_ = torch.cat([rx, rs], 0)
-        # h_ = torch.cat([rz, ry], 0)
-
-        H_ = torch.zeros(nBatch, nz + nineq, nz + nineq).type_as(Q)
-        H_[:, :nz, :nz] = Q.repeat(nBatch, 1, 1)
-        H_[:, -nineq:, -nineq:] = D
-
-        A_ = block(((G, 'I'),
-                    (A, torch.zeros(neq, nineq).type_as(Q))))
-
+        A_ = torch.cat([torch.cat([G, torch.eye(nineq).type_as(Q).repeat(nBatch, 1, 1)], 2),
+                        torch.cat([A, torch.zeros(nBatch, neq, nineq).type_as(Q)], 2)], 1)
         g_ = torch.cat([rx, rs], 1)
         h_ = torch.cat([rz, ry], 1)
     else:
-        H_ = torch.zeros(nBatch, nz + nineq, nz + nineq).type_as(Q)
-        H_[:, :nz, :nz] = Q.repeat(nBatch, 1, 1)
-        H_[:, -nineq:, -nineq:] = D
         A_ = torch.cat([G, torch.eye(nineq).type_as(Q)], 1)
         g_ = torch.cat([rx, rs], 1)
         h_ = rz
 
     H_LU = H_.btrifact()
 
-    A = A_.repeat(nBatch, 1, 1)
-    invH_A_ = A.transpose(1, 2).btrisolve(*H_LU)
+    invH_A_ = A_.transpose(1, 2).btrisolve(*H_LU)
     invH_g_ = g_.btrisolve(*H_LU)
 
-    S_ = torch.bmm(A, invH_A_)
+    S_ = torch.bmm(A_, invH_A_)
     S_LU = S_.btrifact()
-    t_ = torch.mm(invH_g_, A_.t()) - h_
+    t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze() - h_
     w_ = -t_.btrisolve(*S_LU)
-    t_ = -g_ - w_.mm(A_)
+    t_ = -g_ - w_.unsqueeze(1).bmm(A_).squeeze()
     v_ = t_.btrisolve(*H_LU)
 
     dx = v_[:, :nz]
