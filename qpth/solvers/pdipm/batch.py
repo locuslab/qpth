@@ -15,6 +15,10 @@ Your problem may be infeasible or difficult.
 You can try using the CVXPY solver to see if your problem is feasible
 and you can use the verbose option to check the convergence status of
 our solver while increasing the number of iterations.
+
+Advanced users:
+You can also try to enable iterative refinement in the solver:
+https://github.com/locuslab/qpth/issues/6
 --------
 """
 
