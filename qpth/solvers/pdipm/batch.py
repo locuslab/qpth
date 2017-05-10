@@ -137,7 +137,6 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
         else:
             assert False
 
-
         # compute centering directions
         alpha = torch.min(torch.min(get_step(z, dz_aff),
                                     get_step(s, ds_aff)),
@@ -219,6 +218,7 @@ def kkt_resid_reg(Q_tilde, D_tilde, G, A, eps, dx, ds, dz, dy, rx, rs, rz, ry):
     resx, ress, resz, resy = (
         v.squeeze(2) if v is not None else None for v in (resx, ress, resz, resy))
     return resx, ress, resz, resy
+
 
 def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry, niter=1):
     """Inefficient iterative refinement."""
