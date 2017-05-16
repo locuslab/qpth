@@ -32,6 +32,7 @@ import qpth.solvers.cvxpy as qp_cvxpy
 
 import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
+import qpth.solvers.pdipm.spbatch as pdipm_spb
 
 # from IPython.core import ultratb
 # sys.excepthook = ultratb.FormattedTB(mode='Verbose',
@@ -251,6 +252,115 @@ def test_ir_kkt_solver():
     npt.assert_allclose(dy.numpy(), dy_.numpy(), rtol=RTOL, atol=ATOL)
 
 
+def test_sparse_forward():
+    torch.manual_seed(0)
+
+    nBatch, nx, nineq, neq = 2, 5, 4, 3
+    def cast(m):
+        return m.cuda().double()
+
+    spTensor = torch.cuda.sparse.DoubleTensor
+    iTensor = torch.cuda.LongTensor
+
+    Qi = iTensor([range(nx), range(nx)])
+    Qv = cast(torch.ones(nBatch, nx))
+    Qsz = torch.Size([nx, nx])
+    Q0 = spTensor(Qi, Qv[0], Qsz)
+
+    Gi = iTensor([range(nineq), range(nineq)])
+    Gv = cast(torch.randn(nBatch, nineq))
+    Gsz = torch.Size([nineq, nx])
+    G0 = spTensor(Gi, Gv[0], Gsz)
+    h = cast(torch.randn(nBatch, nineq))
+
+    Ai = iTensor([range(neq), range(neq)])
+    Av = Gv[:,:neq].clone()
+    Asz = torch.Size([neq, nx])
+    A0 = spTensor(Ai, Av[0], Asz)
+    b = h[:,:neq].clone()
+
+    p = cast(torch.randn(nBatch, nx))
+
+    from IPython.core import ultratb
+    sys.excepthook = ultratb.FormattedTB(mode='Verbose',
+        color_scheme='Linux', call_pdb=1)
+    xhats0_cp = qpth.qp.QPFunction(solver=qpth.qp.QPSolvers.CVXPY)(
+        *[Variable(y) for y in
+          [Q0.to_dense(), p[0], G0.to_dense(), h[0], A0.to_dense(), b[0]]]).data.squeeze()
+
+    xhats, nus, lams, slacks = pdipm_spb.forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h,
+                                                 Ai, Av, Asz, b, verbose=-1,
+                                                 notImprovedLim=3, maxIter=20)
+    npt.assert_allclose(xhats0_cp.cpu().numpy(), xhats[0].cpu().numpy(), rtol=RTOL, atol=ATOL)
+
+    Qv, p, Gv, h, Av, b = [Variable(x) for x in [Qv, p, Gv, h, Av, b]]
+    xhats_qpf = qpth.qp.SpQPFunction(Qi, Qsz, Gi, Gsz, Ai, Asz)(
+        Qv, p, Gv, h, Av, b
+    ).data
+    npt.assert_allclose(xhats.cpu().numpy(), xhats_qpf.cpu().numpy(), rtol=RTOL, atol=ATOL)
+
+
+def test_sparse_backward():
+    torch.manual_seed(0)
+
+    nBatch, nx, nineq, neq = 1, 5, 4, 3
+    def cast(m):
+        return m.cuda().double()
+
+    spTensor = torch.cuda.sparse.DoubleTensor
+    iTensor = torch.cuda.LongTensor
+
+    Qi = iTensor([range(nx), range(nx)])
+    Qv = cast(torch.ones(nBatch, nx))
+    Qsz = torch.Size([nx, nx])
+    Q0 = spTensor(Qi, Qv[0], Qsz)
+
+    Gi = iTensor([range(nineq), range(nineq)])
+    Gv = cast(torch.randn(nBatch, nineq))
+    Gsz = torch.Size([nineq, nx])
+    G0 = spTensor(Gi, Gv[0], Gsz)
+    h = cast(torch.randn(nBatch, nineq))
+
+    Ai = iTensor([range(neq), range(neq)])
+    Av = Gv[:,:neq].clone()
+    Asz = torch.Size([neq, nx])
+    A0 = spTensor(Ai, Av[0], Asz)
+    b = h[:,:neq].clone()
+
+    p = cast(torch.randn(nBatch, nx))
+    truex = Variable(cast(torch.randn(nBatch, nx)))
+
+    Qv, p, Gv, h, Av, b = [Variable(x) for x in [Qv, p, Gv, h, Av, b]]
+    for x in [Qv, p, Gv, h, Av, b]:
+        x.requires_grad = True
+    xhats = qpth.qp.SpQPFunction(Qi, Qsz, Gi, Gsz, Ai, Asz)(
+        Qv, p, Gv, h, Av, b
+    )
+    loss = torch.norm(xhats-truex)
+    loss.backward()
+
+    dQv, dGv, dAv = Qv.grad, Gv.grad, Av.grad
+
+    Q0 = Q0.to_dense()
+    p0 = p[0].data
+    G0 = G0.to_dense()
+    h0 = h[0].data
+    A0 = A0.to_dense()
+    b0 = b[0].data
+    Q0, p0, G0, h0, A0, b0 = [Variable(y) for y in [Q0, p0, G0, h0, A0, b0]]
+    for x in [Q0, p0, G0, h0, A0, b0]:
+        x.requires_grad = True
+    xhats_dense = qpth.qp.QPFunction()(Q0, p0, G0, h0, A0, b0)
+    loss_dense = torch.norm(xhats_dense-truex)
+    loss_dense.backward()
+
+    dQ, dG, dA = Q0.grad, G0.grad, A0.grad
+
+    npt.assert_allclose(dQv.data.cpu().numpy(), dQ.data.diag().cpu().numpy(),
+                        rtol=RTOL, atol=ATOL)
+    # TODO: dG/dGv don't match
+    # TODO: dA/dAv don't match
+
 if __name__ == '__main__':
     test_dl_dp()
     test_dl_dG()
@@ -259,3 +369,5 @@ if __name__ == '__main__':
     test_dl_db()
     test_lu_kkt_solver()
     test_ir_kkt_solver()
+    test_sparse_forward()
+    test_sparse_backward()
