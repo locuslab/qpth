@@ -7,10 +7,8 @@
 #   Easier to print statements.
 #   This will exit qfter the first assertion.
 
-import os
-
 import torch
-from torch.autograd import Function, Variable
+from torch.autograd import Variable
 
 import numpy as np
 import numpy.random as npr
@@ -18,19 +16,14 @@ import numpy.testing as npt
 np.set_printoptions(precision=6)
 
 import numdifftools as nd
-import cvxpy as cp
-
-# from solver import BlockSolver as Solver
-
-from nose.tools import with_setup, assert_almost_equal
 
 import sys
 sys.path.append('..')
 import qpth
-from qpth.util import bger, bdiag, expandParam, extract_nBatch
+from qpth.util import bdiag, expandParam, extract_nBatch
 import qpth.solvers.cvxpy as qp_cvxpy
 
-import qpth.solvers.pdipm.single as pdipm_s
+# import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
 import qpth.solvers.pdipm.spbatch as pdipm_spb
 
@@ -82,7 +75,7 @@ def get_grads_torch(Q, p, G, h, A, b, truez):
     for x in [Q, p, G, h]:
         x.requires_grad = True
 
-    nBatch = 1
+    # nBatch = 1
     if b.nelement() > 0:
         A.requires_grad = True
         b.requires_grad = True
@@ -257,6 +250,7 @@ def test_sparse_forward():
     torch.manual_seed(0)
 
     nBatch, nx, nineq, neq = 2, 5, 4, 3
+
     def cast(m):
         return m.cuda().double()
 
@@ -275,16 +269,16 @@ def test_sparse_forward():
     h = cast(torch.randn(nBatch, nineq))
 
     Ai = iTensor([range(neq), range(neq)])
-    Av = Gv[:,:neq].clone()
+    Av = Gv[:, :neq].clone()
     Asz = torch.Size([neq, nx])
     A0 = spTensor(Ai, Av[0], Asz)
-    b = h[:,:neq].clone()
+    b = h[:, :neq].clone()
 
     p = cast(torch.randn(nBatch, nx))
 
     from IPython.core import ultratb
     sys.excepthook = ultratb.FormattedTB(mode='Verbose',
-        color_scheme='Linux', call_pdb=1)
+                                         color_scheme='Linux', call_pdb=1)
     xhats0_cp = qpth.qp.QPFunction(solver=qpth.qp.QPSolvers.CVXPY)(
         *[Variable(y) for y in
           [Q0.to_dense(), p[0], G0.to_dense(), h[0], A0.to_dense(), b[0]]]).data.squeeze()
@@ -292,13 +286,15 @@ def test_sparse_forward():
     xhats, nus, lams, slacks = pdipm_spb.forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h,
                                                  Ai, Av, Asz, b, verbose=-1,
                                                  notImprovedLim=3, maxIter=20)
-    npt.assert_allclose(xhats0_cp.cpu().numpy(), xhats[0].cpu().numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(xhats0_cp.cpu().numpy(),
+                        xhats[0].cpu().numpy(), rtol=RTOL, atol=ATOL)
 
     Qv, p, Gv, h, Av, b = [Variable(x) for x in [Qv, p, Gv, h, Av, b]]
     xhats_qpf = qpth.qp.SpQPFunction(Qi, Qsz, Gi, Gsz, Ai, Asz)(
         Qv, p, Gv, h, Av, b
     ).data
-    npt.assert_allclose(xhats.cpu().numpy(), xhats_qpf.cpu().numpy(), rtol=RTOL, atol=ATOL)
+    npt.assert_allclose(xhats.cpu().numpy(),
+                        xhats_qpf.cpu().numpy(), rtol=RTOL, atol=ATOL)
 
 
 @npt.decorators.skipif(not torch.cuda.is_available())
@@ -306,6 +302,7 @@ def test_sparse_backward():
     torch.manual_seed(0)
 
     nBatch, nx, nineq, neq = 1, 5, 4, 3
+
     def cast(m):
         return m.cuda().double()
 
@@ -324,10 +321,10 @@ def test_sparse_backward():
     h = cast(torch.randn(nBatch, nineq))
 
     Ai = iTensor([range(neq), range(neq)])
-    Av = Gv[:,:neq].clone()
+    Av = Gv[:, :neq].clone()
     Asz = torch.Size([neq, nx])
     A0 = spTensor(Ai, Av[0], Asz)
-    b = h[:,:neq].clone()
+    b = h[:, :neq].clone()
 
     p = cast(torch.randn(nBatch, nx))
     truex = Variable(cast(torch.randn(nBatch, nx)))
@@ -338,10 +335,11 @@ def test_sparse_backward():
     xhats = qpth.qp.SpQPFunction(Qi, Qsz, Gi, Gsz, Ai, Asz)(
         Qv, p, Gv, h, Av, b
     )
-    loss = torch.norm(xhats-truex)
+    loss = torch.norm(xhats - truex)
     loss.backward()
 
-    dQv, dGv, dAv = Qv.grad, Gv.grad, Av.grad
+    # dQv, dGv, dAv = Qv.grad, Gv.grad, Av.grad
+    dQv = Qv.grad
 
     Q0 = Q0.to_dense()
     p0 = p[0].data
@@ -353,15 +351,17 @@ def test_sparse_backward():
     for x in [Q0, p0, G0, h0, A0, b0]:
         x.requires_grad = True
     xhats_dense = qpth.qp.QPFunction()(Q0, p0, G0, h0, A0, b0)
-    loss_dense = torch.norm(xhats_dense-truex)
+    loss_dense = torch.norm(xhats_dense - truex)
     loss_dense.backward()
 
-    dQ, dG, dA = Q0.grad, G0.grad, A0.grad
+    # dQ, dG, dA = Q0.grad, G0.grad, A0.grad
+    dQ = Q0.grad
 
     npt.assert_allclose(dQv.data.cpu().numpy(), dQ.data.diag().cpu().numpy(),
                         rtol=RTOL, atol=ATOL)
     # TODO: dG/dGv don't match
     # TODO: dA/dAv don't match
+
 
 if __name__ == '__main__':
     test_dl_dp()

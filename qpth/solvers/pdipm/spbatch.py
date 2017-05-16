@@ -2,8 +2,6 @@ import torch
 from enum import Enum
 # from block import block
 
-from qpth.util import get_sizes, bdiag
-
 
 INACC_ERR = """
 --------
@@ -46,7 +44,8 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
         Dv = torch.ones(nBatch, nineq).type_as(Qv)
         Dsz = torch.Size([nineq, nineq])
         x, s, z, y = solve_kkt(Qi, Qv, Qsz, Di, Dv, Dsz, Gi, Gv, Gsz,
-                               Ai, Av, Asz, p, torch.zeros(nBatch, nineq).type_as(p),
+                               Ai, Av, Asz, p, torch.zeros(
+                                   nBatch, nineq).type_as(p),
                                -h, -b if b is not None else None)
     else:
         assert False
@@ -64,17 +63,12 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
 
     for i in range(maxIter):
         # affine scaling direction
-        rx0 = (torch.mv(As[0].to_dense().t(), y[0]) if neq > 0 else 0.) + \
-              torch.mv(Gs[0].to_dense().t(), z[0]) + \
-              torch.mv(Qs[0].to_dense(), x[0]) + p[0]
-        rz0 = torch.mv(Gs[0].to_dense(), x[0]) + s[0] - h[0]
-        ry0 = torch.mv(As[0].to_dense(), x[0]) - b[0]
-        rx = torch.cat([(torch.mm(As[j].t(), y[j].unsqueeze(1)) if neq > 0 else 0.) + \
-                        torch.mm(Gs[j].t(), z[j].unsqueeze(1)) + \
-                        torch.mm(Qs[j], x[j].unsqueeze(1)) + \
+        rx = torch.cat([(torch.mm(As[j].t(), y[j].unsqueeze(1)) if neq > 0 else 0.) +
+                        torch.mm(Gs[j].t(), z[j].unsqueeze(1)) +
+                        torch.mm(Qs[j], x[j].unsqueeze(1)) +
                         p[j] for j in range(nBatch)], 1).t()
         rs = z
-        rz = torch.cat([torch.mm(Gs[j], x[j].unsqueeze(1)) + \
+        rz = torch.cat([torch.mm(Gs[j], x[j].unsqueeze(1)) +
                         s[j] - h[j] for j in range(nBatch)], 1).t()
         ry = torch.cat([torch.mm(As[j], x[j].unsqueeze(1)) - b[j]
                         for j in range(nBatch)], 1).t()
@@ -140,7 +134,7 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
         ry = torch.zeros(nBatch, neq).type_as(Qv)
 
         if solver == KKTSolvers.QR:
-            dx_cor, ds_cor, dz_cor, dy_cor= solve_kkt(
+            dx_cor, ds_cor, dz_cor, dy_cor = solve_kkt(
                 Qi, Qv, Qsz, Di, Dv, Dsz, Gi, Gv, Gsz,
                 Ai, Av, Asz, rx, rs, rz, ry)
         else:
@@ -184,40 +178,44 @@ def cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps):
     Di = Di + nz
 
     Gi_L = Gi.clone()
-    Gi_L[0,:] += nz+nineq
+    Gi_L[0, :] += nz + nineq
     Gv_L = Gv
 
-    Gi_U = torch.stack([Gi[1,:], Gi[0,:]])
-    Gi_U[1,:] += nz+nineq
+    Gi_U = torch.stack([Gi[1, :], Gi[0, :]])
+    Gi_U[1, :] += nz + nineq
     Gv_U = Gv
 
     Ai_L = Ai.clone()
-    Ai_L[0,:] += nz+2*nineq
+    Ai_L[0, :] += nz + 2 * nineq
     Av_L = Av
 
-    Ai_U = torch.stack([Ai[1,:], Ai[0,:]])
-    Ai_U[1,:] += nz+2*nineq
+    Ai_U = torch.stack([Ai[1, :], Ai[0, :]])
+    Ai_U[1, :] += nz + 2 * nineq
     Av_U = Av
 
     Ii_L = type(Qi)([range(nineq), range(nineq)])
     Ii_U = Ii_L.clone()
-    Ii_L[0,:] += nz+nineq
-    Ii_L[1,:] += nz
-    Ii_U[0,:] += nz
-    Ii_U[1,:] += nz+nineq
+    Ii_L[0, :] += nz + nineq
+    Ii_L[1, :] += nz
+    Ii_U[0, :] += nz
+    Ii_U[1, :] += nz + nineq
     Iv_L = type(Qv)(nBatch, nineq).fill_(1.0)
     Iv_U = Iv_L.clone()
 
-    Ii_11 = type(Qi)([range(nz+nineq), range(nz+nineq)])
-    Iv_11 = type(Qv)(nBatch, nz+nineq).fill_(eps)
-    Ii_22 = type(Qi)([range(nz+nineq,nz+2*nineq+neq), range(nz+nineq,nz+2*nineq+neq)])
-    Iv_22 = type(Qv)(nBatch, nineq+neq).fill_(-eps)
+    Ii_11 = type(Qi)([range(nz + nineq), range(nz + nineq)])
+    Iv_11 = type(Qv)(nBatch, nz + nineq).fill_(eps)
+    Ii_22 = type(Qi)([range(nz + nineq, nz + 2 * nineq + neq),
+                      range(nz + nineq, nz + 2 * nineq + neq)])
+    Iv_22 = type(Qv)(nBatch, nineq + neq).fill_(-eps)
 
-    Ki = torch.cat((Qi, Di, Gi_L, Gi_U, Ai_L, Ai_U, Ii_L, Ii_U, Ii_11, Ii_22), 1)
-    Kv = torch.cat((Qv, Dv, Gv_L, Gv_U, Av_L, Av_U, Iv_L, Iv_U, Iv_11, Iv_22), 1)
-    k = nz+2*nineq+neq
+    Ki = torch.cat((Qi, Di, Gi_L, Gi_U, Ai_L, Ai_U,
+                    Ii_L, Ii_U, Ii_11, Ii_22), 1)
+    Kv = torch.cat((Qv, Dv, Gv_L, Gv_U, Av_L, Av_U,
+                    Iv_L, Iv_U, Iv_11, Iv_22), 1)
+    k = nz + 2 * nineq + neq
     Ksz = torch.Size([k, k])
-    Ks = [torch.cuda.sparse.DoubleTensor(Ki, Kv[i], Ksz).coalesce() for i in range(nBatch)]
+    Ks = [torch.cuda.sparse.DoubleTensor(
+        Ki, Kv[i], Ksz).coalesce() for i in range(nBatch)]
     Ki = Ks[0]._indices()
     Kv = torch.stack([Ks[i]._values() for i in range(nBatch)])
     return Ks, [Ki, Kv, Ksz]
@@ -234,18 +232,21 @@ def solve_kkt(Qi, Qv, Qsz, Di, Dv, Dsz, Gi, Gv, Gsz, Ai, Av, Asz,
     eps = 1e-7
 
     Ks, K = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, 0.0)
-    Ktildes, Ktilde = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps)
+    Ktildes, Ktilde = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz,
+                              Ai, Av, Asz, Di, Dv, Dsz, eps)
 
-    l = torch.spbqrfactsolve(*([r]+Ktilde))
-    res = torch.stack([r[i]-torch.mm(Ks[i], l[i].unsqueeze(1)) for i in range(nBatch)])
+    l = torch.spbqrfactsolve(*([r] + Ktilde))
+    res = torch.stack([r[i] - torch.mm(Ks[i], l[i].unsqueeze(1))
+                       for i in range(nBatch)])
     for k in range(niter):
-        d = torch.spbqrfactsolve(*([res]+Ktilde))
-        l = l+d
-        res = torch.stack([r[i]-torch.mm(Ks[i], l[i].unsqueeze(1)) for i in range(nBatch)])
+        d = torch.spbqrfactsolve(*([res] + Ktilde))
+        l = l + d
+        res = torch.stack([r[i] - torch.mm(Ks[i], l[i].unsqueeze(1))
+                           for i in range(nBatch)])
 
-    rx = l[:,:nz]
-    rs = l[:,nz:nz+nineq]
-    rz = l[:,nz+nineq:nz+2*nineq]
-    ry = l[:,nz+2*nineq:nz+2*nineq+neq]
+    rx = l[:, :nz]
+    rs = l[:, nz:nz + nineq]
+    rz = l[:, nz + nineq:nz + 2 * nineq]
+    ry = l[:, nz + 2 * nineq:nz + 2 * nineq + neq]
 
     return rx, rs, rz, ry

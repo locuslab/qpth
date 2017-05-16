@@ -6,7 +6,6 @@ import sys
 import numpy as np
 import numpy.random as npr
 
-import qpth
 import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
 
@@ -17,12 +16,12 @@ import torch
 
 import gurobipy as gpy
 
-import sys
 from IPython.core import ultratb
 sys.excepthook = ultratb.FormattedTB(mode='Verbose',
-     color_scheme='Linux', call_pdb=1)
+                                     color_scheme='Linux', call_pdb=1)
 
 import setproctitle
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -34,6 +33,7 @@ def main():
 
     prof(args)
 
+
 def prof(args):
     print('|  \# Vars | \# Batch | Gurobi | single | batched |')
     print('|----------+----------+--------+--------+---------|')
@@ -43,20 +43,21 @@ def prof(args):
         for i in range(args.nTrials):
             times.append(prof_instance(nz, nBatch))
         times = np.array(times)
-        print(("| {:5d} "*2 + "| ${:.5e} \pm {:.5e}$ s "*3 + '|').format(
-            *([nz,nBatch] + [item for sublist in zip(times.mean(axis=0), times.std(axis=0))
-                           for item in sublist])))
+        print(("| {:5d} " * 2 + "| ${:.5e} \pm {:.5e}$ s " * 3 + '|').format(
+            *([nz, nBatch] + [item for sublist in zip(times.mean(axis=0), times.std(axis=0))
+                              for item in sublist])))
+
 
 def prof_instance(nz, nBatch, cuda=True):
     nineq, neq = 100, 0
     assert(neq == 0)
-    L = npr.rand(nBatch,nz,nz)
-    Q = np.matmul(L, L.transpose((0, 2, 1))) + 1e-3*np.eye(nz,nz)
+    L = npr.rand(nBatch, nz, nz)
+    Q = np.matmul(L, L.transpose((0, 2, 1))) + 1e-3 * np.eye(nz, nz)
     G = npr.randn(nBatch, nineq, nz)
     z0 = npr.randn(nBatch, nz)
     s0 = npr.rand(nBatch, nineq)
     p = npr.randn(nBatch, nz)
-    h = np.matmul(G, np.expand_dims(z0, axis=(2))).squeeze(2)  + s0
+    h = np.matmul(G, np.expand_dims(z0, axis=(2))).squeeze(2) + s0
     A = npr.randn(nBatch, neq, nz)
     b = np.matmul(A, np.expand_dims(z0, axis=(2))).squeeze(2)
 
@@ -69,32 +70,31 @@ def prof_instance(nz, nBatch, cuda=True):
         obj = 0.0
         for j in range(nz):
             for k in range(nz):
-                obj += 0.5*Q[i,j,k]*zhat[j]*zhat[k]
-            obj += p[i,j]*zhat[j]
+                obj += 0.5 * Q[i, j, k] * zhat[j] * zhat[k]
+            obj += p[i, j] * zhat[j]
         m.setObjective(obj)
         for j in range(nineq):
             con = 0
             for k in range(nz):
-                con += G[i,j,k]*zhat[k]
-            m.addConstr(con <= h[i,j])
+                con += G[i, j, k] * zhat[k]
+            m.addConstr(con <= h[i, j])
         m.setParam('OutputFlag', False)
         start = time.time()
         m.optimize()
-        gurobi_time += time.time()-start
+        gurobi_time += time.time() - start
         t = np.zeros(nz)
         for j in range(nz):
             t[j] = zhat[j].x
         zhat_g.append(t)
 
-
     p, L, Q, G, z0, s0, h = [torch.Tensor(x) for x in [p, L, Q, G, z0, s0, h]]
     if cuda:
         p, L, Q, G, z0, s0, h = [x.cuda() for x in [p, L, Q, G, z0, s0, h]]
-    if neq  > 0:
+    if neq > 0:
         A = torch.Tensor(A)
         b = torch.Tensor(b)
     else:
-        A, b = [torch.Tensor()]*2
+        A, b = [torch.Tensor()] * 2
     if cuda:
         A = A.cuda()
         b = b.cuda()
@@ -109,12 +109,12 @@ def prof_instance(nz, nBatch, cuda=True):
         U_Q, U_S, R = pdipm_s.pre_factor_kkt(Q[i], G[i], A_i)
         single_results.append(pdipm_s.forward(p[i], Q[i], G[i], A_i, b_i, h[i],
                                               U_Q, U_S, R))
-    single_time = time.time()-start
+    single_time = time.time() - start
 
     start = time.time()
     Q_LU, S_LU, R = pdipm_b.pre_factor_kkt(Q, G, A)
     zhat_b, nu_b, lam_b, s_b = pdipm_b.forward(p, Q, G, h, A, b, Q_LU, S_LU, R)
-    batched_time = time.time()-start
+    batched_time = time.time() - start
 
     # Usually between 1e-4 and 1e-5:
     # print('Diff between gurobi and pdipm: ',
@@ -136,5 +136,6 @@ def prof_instance(nz, nBatch, cuda=True):
 
     return gurobi_time, single_time, batched_time
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     main()
