@@ -252,6 +252,7 @@ def test_ir_kkt_solver():
     npt.assert_allclose(dy.numpy(), dy_.numpy(), rtol=RTOL, atol=ATOL)
 
 
+@npt.decorators.skipif(not torch.cuda.is_available())
 def test_sparse_forward():
     torch.manual_seed(0)
 
@@ -300,6 +301,7 @@ def test_sparse_forward():
     npt.assert_allclose(xhats.cpu().numpy(), xhats_qpf.cpu().numpy(), rtol=RTOL, atol=ATOL)
 
 
+@npt.decorators.skipif(not torch.cuda.is_available())
 def test_sparse_backward():
     torch.manual_seed(0)
 
