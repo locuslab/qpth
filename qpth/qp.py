@@ -166,6 +166,7 @@ class QPFunction(Function):
 
         return grads
 
+
 class SpQPFunction(Function):
     def __init__(self, Qi, Qsz, Gi, Gsz, Ai, Asz,
                  eps=1e-12, verbose=0, notImprovedLim=3, maxIter=20):
@@ -180,7 +181,6 @@ class SpQPFunction(Function):
 
         self.nineq, self.nz = Gsz
         self.neq, _ = Asz
-
 
     def forward(self, Qv, p, Gv, h, Av, b):
         self.nBatch = Qv.size(0)
