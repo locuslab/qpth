@@ -357,7 +357,7 @@ def test_sparse_backward():
     # dQ, dG, dA = Q0.grad, G0.grad, A0.grad
     dQ = Q0.grad
 
-    npt.assert_allclose(dQv.data.cpu().numpy(), dQ.data.diag().cpu().numpy(),
+    npt.assert_allclose(dQv.squeeze().data.cpu().numpy(), dQ.data.diag().cpu().numpy(),
                         rtol=RTOL, atol=ATOL)
     # TODO: dG/dGv don't match
     # TODO: dA/dAv don't match
