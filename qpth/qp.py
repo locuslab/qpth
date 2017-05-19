@@ -210,28 +210,26 @@ class SpQPFunction(Function):
         dps = dx
 
         dGs = bger(dlam, zhats) + bger(self.lams, dx)
-        dGs = dGs.mean(0).squeeze(0)
         GM = torch.cuda.sparse.DoubleTensor(
-            self.Gi, Gv[0].clone().fill_(1.0), self.Gsz).to_dense().byte()
-        dGs = dGs[GM]
+            self.Gi, Gv[0].clone().fill_(1.0), self.Gsz
+        ).to_dense().byte().expand_as(dGs)
+        dGs = dGs[GM].view_as(Gv)
 
         dhs = -dlam
-        dhs = dhs.mean(0).squeeze(0)
 
         dAs = bger(dnu, zhats) + bger(self.nus, dx)
-        dAs = dAs.mean(0).squeeze(0)
         AM = torch.cuda.sparse.DoubleTensor(
-            self.Ai, Av[0].clone().fill_(1.0), self.Asz).to_dense().byte()
-        dAs = dAs[AM]
+            self.Ai, Av[0].clone().fill_(1.0), self.Asz
+        ).to_dense().byte().expand_as(dAs)
+        dAs = dAs[AM].view_as(Av)
 
         dbs = -dnu
-        dbs = dbs.mean(0).squeeze(0)
 
         dQs = 0.5 * (bger(dx, zhats) + bger(zhats, dx))
-        dQs = dQs.mean(0).squeeze(0)
         QM = torch.cuda.sparse.DoubleTensor(
-            self.Qi, Qv[0].clone().fill_(1.0), self.Qsz).to_dense().byte()
-        dQs = dQs[QM]
+            self.Qi, Qv[0].clone().fill_(1.0), self.Qsz
+        ).to_dense().byte().expand_as(dQs)
+        dQs = dQs[QM].view_as(Qv)
 
         grads = (dQs, dps, dGs, dhs, dAs, dbs)
 
