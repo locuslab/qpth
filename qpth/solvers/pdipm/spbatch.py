@@ -225,7 +225,6 @@ def cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps):
     Ki = Ks[0]._indices()
     Kv = torch.stack([Ks[i]._values() for i in range(nBatch)])
 
-
     return Ks, [Ki, Kv, Ksz]
 
 
