@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from enum import Enum
 # from block import block
@@ -218,6 +219,11 @@ def cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps):
         Ki, Kv[i], Ksz).coalesce() for i in range(nBatch)]
     Ki = Ks[0]._indices()
     Kv = torch.stack([Ks[i]._values() for i in range(nBatch)])
+
+    I = torch.LongTensor(np.lexsort((Ki[1].cpu().numpy(), Ki[0].cpu().numpy()))).cuda()
+    Ki = Ki.t()[I].t().contiguous()
+    Kv = Kv.t()[I].t().contiguous()
+
     return Ks, [Ki, Kv, Ksz]
 
 
