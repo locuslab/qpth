@@ -39,17 +39,18 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
 
     solver = KKTSolvers.QR
 
-    KKTeps = 1e-7 # For the regularized KKT matrix.
+    KKTeps = 1e-7  # For the regularized KKT matrix.
 
     # Find initial values
     if solver == KKTSolvers.QR:
         Di = torch.LongTensor([range(nineq), range(nineq)]).type_as(Qi)
         Dv = torch.ones(nBatch, nineq).type_as(Qv)
         Dsz = torch.Size([nineq, nineq])
-        Ks, K, Didx = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, 0.0)
+        Ks, K, Didx = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz,
+                              Ai, Av, Asz, Di, Dv, Dsz, 0.0)
         Ktildes, Ktilde, Didxtilde = cat_kkt(
             Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, KKTeps)
-        assert torch.norm((Didx-Didxtilde).float()) == 0.0
+        assert torch.norm((Didx - Didxtilde).float()) == 0.0
         x, s, z, y = solve_kkt(Ks, K, Ktildes, Ktilde,
                                p, torch.zeros(nBatch, nineq).type_as(p),
                                -h, -b if b is not None else None)
@@ -116,10 +117,11 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
             return best['x'], best['y'], best['z'], best['s']
 
         if solver == KKTSolvers.QR:
-            D = z/s
+            D = z / s
             K[1].t()[Didx] = D.t()
             Ktilde[1].t()[Didx] = D.t() + KKTeps
-            # TODO: Share memory between these or handle batched sparse matrices differently.
+            # TODO: Share memory between these or handle batched sparse
+            # matrices differently.
             for j in range(nBatch):
                 Ks[j]._values()[Didx] = D[j]
                 Ktildes[j]._values()[Didx] = D[j] + KKTeps
@@ -225,7 +227,8 @@ def cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps):
     k = nz + 2 * nineq + neq
     Ksz = torch.Size([k, k])
 
-    I = torch.LongTensor(np.lexsort((Ki[1].cpu().numpy(), Ki[0].cpu().numpy()))).cuda()
+    I = torch.LongTensor(np.lexsort(
+        (Ki[1].cpu().numpy(), Ki[0].cpu().numpy()))).cuda()
     Ki = Ki.t()[I].t().contiguous()
     Kv = Kv.t()[I].t().contiguous()
 
@@ -235,7 +238,7 @@ def cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps):
     Kv = torch.stack([Ks[i]._values() for i in range(nBatch)])
 
     Didx = torch.nonzero(
-        (Ki[0] == Ki[1]).__and__(nz <= Ki[0]).__and__(Ki[0] < nz+nineq)).squeeze()
+        (Ki[0] == Ki[1]).__and__(nz <= Ki[0]).__and__(Ki[0] < nz + nineq)).squeeze()
 
     return Ks, [Ki, Kv, Ksz], Didx
 
