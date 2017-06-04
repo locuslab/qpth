@@ -39,7 +39,7 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
 
     solver = KKTSolvers.QR
 
-    eps = 1e-7 # For the regularized KKT matrix.
+    KKTeps = 1e-7 # For the regularized KKT matrix.
 
     # Find initial values
     if solver == KKTSolvers.QR:
@@ -48,7 +48,7 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
         Dsz = torch.Size([nineq, nineq])
         Ks, K, Didx = cat_kkt(Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, 0.0)
         Ktildes, Ktilde, Didxtilde = cat_kkt(
-            Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, eps)
+            Qi, Qv, Qsz, Gi, Gv, Gsz, Ai, Av, Asz, Di, Dv, Dsz, KKTeps)
         assert torch.norm((Didx-Didxtilde).float()) == 0.0
         x, s, z, y = solve_kkt(Ks, K, Ktildes, Ktilde,
                                p, torch.zeros(nBatch, nineq).type_as(p),
@@ -118,11 +118,11 @@ def forward(Qi, Qv, Qsz, p, Gi, Gv, Gsz, h, Ai, Av, Asz, b,
         if solver == KKTSolvers.QR:
             D = z/s
             K[1].t()[Didx] = D.t()
-            Ktilde[1].t()[Didx] = D.t() + eps
+            Ktilde[1].t()[Didx] = D.t() + KKTeps
             # TODO: Share memory between these or handle batched sparse matrices differently.
             for j in range(nBatch):
                 Ks[j]._values()[Didx] = D[j]
-                Ktildes[j]._values()[Didx] = D[j]+eps
+                Ktildes[j]._values()[Didx] = D[j] + KKTeps
             dx_aff, ds_aff, dz_aff, dy_aff = solve_kkt(
                 Ks, K, Ktildes, Ktilde, rx, rs, rz, ry)
         else:
