@@ -14,7 +14,7 @@ import time
 
 import torch
 
-import gurobipy as gpy
+# import gurobipy as gpy
 
 from IPython.core import ultratb
 sys.excepthook = ultratb.FormattedTB(mode='Verbose',
@@ -27,7 +27,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nTrials', type=int, default=10)
     args = parser.parse_args()
-    setproctitle.setproctitle('bamos.optnet.prof')
+    setproctitle.setproctitle('bamos.optnet.prof-gurobi')
 
     npr.seed(0)
 
@@ -62,30 +62,31 @@ def prof_instance(nz, nBatch, cuda=True):
     b = np.matmul(A, np.expand_dims(z0, axis=(2))).squeeze(2)
 
     zhat_g = []
-    gurobi_time = 0.0
-    for i in range(nBatch):
-        m = gpy.Model()
-        zhat = m.addVars(nz, lb=-gpy.GRB.INFINITY, ub=gpy.GRB.INFINITY)
+    # gurobi_time = 0.0
+    # for i in range(nBatch):
+    #     m = gpy.Model()
+    #     zhat = m.addVars(nz, lb=-gpy.GRB.INFINITY, ub=gpy.GRB.INFINITY)
 
-        obj = 0.0
-        for j in range(nz):
-            for k in range(nz):
-                obj += 0.5 * Q[i, j, k] * zhat[j] * zhat[k]
-            obj += p[i, j] * zhat[j]
-        m.setObjective(obj)
-        for j in range(nineq):
-            con = 0
-            for k in range(nz):
-                con += G[i, j, k] * zhat[k]
-            m.addConstr(con <= h[i, j])
-        m.setParam('OutputFlag', False)
-        start = time.time()
-        m.optimize()
-        gurobi_time += time.time() - start
-        t = np.zeros(nz)
-        for j in range(nz):
-            t[j] = zhat[j].x
-        zhat_g.append(t)
+    #     obj = 0.0
+    #     for j in range(nz):
+    #         for k in range(nz):
+    #             obj += 0.5 * Q[i, j, k] * zhat[j] * zhat[k]
+    #         obj += p[i, j] * zhat[j]
+    #     m.setObjective(obj)
+    #     for j in range(nineq):
+    #         con = 0
+    #         for k in range(nz):
+    #             con += G[i, j, k] * zhat[k]
+    #         m.addConstr(con <= h[i, j])
+    #     m.setParam('OutputFlag', False)
+    #     start = time.time()
+    #     m.optimize()
+    #     gurobi_time += time.time() - start
+    #     t = np.zeros(nz)
+    #     for j in range(nz):
+    #         t[j] = zhat[j].x
+        # zhat_g.append(t)
+    gurobi_time = -1
 
     p, L, Q, G, z0, s0, h = [torch.Tensor(x) for x in [p, L, Q, G, z0, s0, h]]
     if cuda:
@@ -103,17 +104,17 @@ def prof_instance(nz, nBatch, cuda=True):
 
     single_results = []
     start = time.time()
-    for i in range(nBatch):
-        A_i = A[i] if neq > 0 else A
-        b_i = b[i] if neq > 0 else b
-        U_Q, U_S, R = pdipm_s.pre_factor_kkt(Q[i], G[i], A_i)
-        single_results.append(pdipm_s.forward(p[i], Q[i], G[i], A_i, b_i, h[i],
-                                              U_Q, U_S, R))
+    # for i in range(nBatch):
+        # A_i = A[i] if neq > 0 else A
+        # b_i = b[i] if neq > 0 else b
+        # U_Q, U_S, R = pdipm_s.pre_factor_kkt(Q[i], G[i], A_i)
+        # single_results.append(pdipm_s.forward(p[i], Q[i], G[i], A_i, b_i, h[i],
+        #                                       U_Q, U_S, R))
     single_time = time.time() - start
 
     start = time.time()
     Q_LU, S_LU, R = pdipm_b.pre_factor_kkt(Q, G, A)
-    zhat_b, nu_b, lam_b, s_b = pdipm_b.forward(p, Q, G, h, A, b, Q_LU, S_LU, R)
+    zhat_b, nu_b, lam_b, s_b = pdipm_b.forward(Q, p, G, h, A, b, Q_LU, S_LU, R)
     batched_time = time.time() - start
 
     # Usually between 1e-4 and 1e-5:
