@@ -267,14 +267,14 @@ def factor_solve_kkt_reg(Q_tilde, D, G, A, rx, rs, rz, ry, eps):
         g_ = torch.cat([rx, rs], 1)
         h_ = rz
 
-    H_LU = H_.btrifact()
+    H_LU = H_.btrifact(pivot=False)
 
     invH_A_ = A_.transpose(1, 2).btrisolve(*H_LU)
     invH_g_ = g_.btrisolve(*H_LU)
 
     S_ = torch.bmm(A_, invH_A_)
     S_ -= eps * torch.eye(neq + nineq).type_as(Q_tilde).repeat(nBatch, 1, 1)
-    S_LU = S_.btrifact()
+    S_LU = S_.btrifact(pivot=False)
     t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze(1) - h_
     w_ = -t_.btrisolve(*S_LU)
     t_ = -g_ - w_.unsqueeze(1).bmm(A_).squeeze()
@@ -304,13 +304,13 @@ def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
         g_ = torch.cat([rx, rs], 1)
         h_ = rz
 
-    H_LU = H_.btrifact()
+    H_LU = H_.btrifact(pivot=False)
 
     invH_A_ = A_.transpose(1, 2).btrisolve(*H_LU)
     invH_g_ = g_.btrisolve(*H_LU)
 
     S_ = torch.bmm(A_, invH_A_)
-    S_LU = S_.btrifact()
+    S_LU = S_.btrifact(pivot=False)
     t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze(1) - h_
     w_ = -t_.btrisolve(*S_LU)
     t_ = -g_ - w_.unsqueeze(1).bmm(A_).squeeze()
@@ -355,7 +355,7 @@ def pre_factor_kkt(Q, G, A):
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
     try:
-        Q_LU = Q.btrifact()
+        Q_LU = Q.btrifact(pivot=False)
     except:
         raise RuntimeError("""
 qpth Error: Cannot perform LU factorization on Q.
@@ -380,7 +380,7 @@ a non-zero diagonal.
         A_invQ_AT = torch.bmm(A, invQ_AT)
         G_invQ_AT = torch.bmm(G, invQ_AT)
 
-        LU_A_invQ_AT = A_invQ_AT.btrifact()
+        LU_A_invQ_AT = A_invQ_AT.btrifact(pivot=False)
         P_A_invQ_AT, L_A_invQ_AT, U_A_invQ_AT = torch.btriunpack(*LU_A_invQ_AT)
         P_A_invQ_AT = P_A_invQ_AT.type_as(A_invQ_AT)
 
@@ -419,20 +419,22 @@ def factor_kkt(S_LU, R, d):
             nBatch, 1, 1).type_as(R).byte()
     T = R.clone()
     T[factor_kkt_eye] += (1. / d).squeeze()
-    T_LU = T.btrifact()
-    oldPivotsPacked = S_LU[1][:, -nineq:] - neq
-    oldPivots, _, _ = torch.btriunpack(
-        T_LU[0], oldPivotsPacked, unpack_data=False)
-    newPivotsPacked = T_LU[1]
-    newPivots, _, _ = torch.btriunpack(
-        T_LU[0], newPivotsPacked, unpack_data=False)
+    T_LU = T.btrifact(pivot=False)
+    # TODO: Currently don't use pivoting because torch.btriunpack is
+    # inefficient.
+    # oldPivotsPacked = S_LU[1][:, -nineq:] - neq
+    # oldPivots, _, _ = torch.btriunpack(
+    #     T_LU[0], oldPivotsPacked, unpack_data=False)
+    # newPivotsPacked = T_LU[1]
+    # newPivots, _, _ = torch.btriunpack(
+    #     T_LU[0], newPivotsPacked, unpack_data=False)
 
     # Re-pivot the S_LU_21 block.
-    if neq > 0:
-        S_LU_21 = S_LU[0][:, -nineq:, :neq]
-        S_LU[0][:, -nineq:,
-                :neq] = newPivots.transpose(1, 2).bmm(oldPivots.bmm(S_LU_21))
+    # if neq > 0:
+    #     S_LU_21 = S_LU[0][:, -nineq:, :neq]
+    #     S_LU[0][:, -nineq:,
+    #             :neq] = newPivots.transpose(1, 2).bmm(oldPivots.bmm(S_LU_21))
 
     # Add the new S_LU_22 block.
     S_LU[0][:, -nineq:, -nineq:] = T_LU[0]
-    S_LU[1][:, -nineq:] = newPivotsPacked + neq
+    # S_LU[1][:, -nineq:] = newPivotsPacked + neq
