@@ -5,3 +5,5 @@ dist
 gurobi.log
 
 *.html
+
+.ipynb_checkpoints
