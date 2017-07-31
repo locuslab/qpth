@@ -6,8 +6,9 @@ from qpth.util import get_sizes, bdiag
 
 shown_btrifact_warning = False
 
+
 def btrifact_hack(x):
-    global shown_btrifact_warning 
+    global shown_btrifact_warning
     try:
         return x.btrifact(pivot=not x.is_cuda)
     except TypeError:
@@ -21,7 +22,6 @@ to get a version that disables pivoting on the GPU.
             shown_btrifact_warning = True
 
         return x.btrifact()
-
 
 
 INACC_ERR = """

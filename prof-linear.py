@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import setGPU 
+# import setGPU
 import argparse
 import sys
 
@@ -8,10 +8,9 @@ import numpy as np
 import numpy.random as npr
 
 from qpth.qp import QPFunction
-import qpth.solvers.pdipm.single as pdipm_s
-import qpth.solvers.pdipm.batch as pdipm_b
+# import qpth.solvers.pdipm.single as pdipm_s
+# import qpth.solvers.pdipm.batch as pdipm_b
 
-import itertools
 import time
 
 import torch
@@ -61,6 +60,7 @@ def prof(args):
     print('linearb = ', all_linearb)
     print('qpthb = ', all_qpthb)
 
+
 def prof_instance(nz, nBatch, nTrials, cuda=True):
     nineq, neq = nz, 0
     assert(neq == 0)
@@ -89,12 +89,13 @@ def prof_instance(nz, nBatch, nTrials, cuda=True):
         A = A.cuda()
         b = b.cuda()
 
-    p, L, Q, G, z0, s0, h, A, b = [Variable(x) for x in [p, L, Q, G, z0, s0, h, A, b]]
+    p, L, Q, G, z0, s0, h, A, b = [
+        Variable(x) for x in [p, L, Q, G, z0, s0, h, A, b]]
     p.requires_grad = True
 
     linearf_times = []
     linearb_times = []
-    for i in range(nTrials+1):
+    for i in range(nTrials + 1):
         start = time.time()
         zhat_l = lm(p)
         linearf_times.append(time.time() - start)
@@ -106,7 +107,7 @@ def prof_instance(nz, nBatch, nTrials, cuda=True):
 
     qpthf_times = []
     qpthb_times = []
-    for i in range(nTrials+1):
+    for i in range(nTrials + 1):
         start = time.time()
         qpf = QPFunction()
         zhat_b = qpf(Q, p, G, h, A, b)

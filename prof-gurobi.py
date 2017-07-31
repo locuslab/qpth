@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import numpy.random as npr
 
-import qpth.solvers.pdipm.single as pdipm_s
+# import qpth.solvers.pdipm.single as pdipm_s
 import qpth.solvers.pdipm.batch as pdipm_b
 
 import itertools
@@ -61,7 +61,7 @@ def prof_instance(nz, nBatch, cuda=True):
     A = npr.randn(nBatch, neq, nz)
     b = np.matmul(A, np.expand_dims(z0, axis=(2))).squeeze(2)
 
-    zhat_g = []
+    # zhat_g = []
     # gurobi_time = 0.0
     # for i in range(nBatch):
     #     m = gpy.Model()
@@ -85,7 +85,7 @@ def prof_instance(nz, nBatch, cuda=True):
     #     t = np.zeros(nz)
     #     for j in range(nz):
     #         t[j] = zhat[j].x
-        # zhat_g.append(t)
+    # zhat_g.append(t)
     gurobi_time = -1
 
     p, L, Q, G, z0, s0, h = [torch.Tensor(x) for x in [p, L, Q, G, z0, s0, h]]
@@ -102,14 +102,14 @@ def prof_instance(nz, nBatch, cuda=True):
 
     # af = adact.AdactFunction()
 
-    single_results = []
+    # single_results = []
     start = time.time()
     # for i in range(nBatch):
-        # A_i = A[i] if neq > 0 else A
-        # b_i = b[i] if neq > 0 else b
-        # U_Q, U_S, R = pdipm_s.pre_factor_kkt(Q[i], G[i], A_i)
-        # single_results.append(pdipm_s.forward(p[i], Q[i], G[i], A_i, b_i, h[i],
-        #                                       U_Q, U_S, R))
+    # A_i = A[i] if neq > 0 else A
+    # b_i = b[i] if neq > 0 else b
+    # U_Q, U_S, R = pdipm_s.pre_factor_kkt(Q[i], G[i], A_i)
+    # single_results.append(pdipm_s.forward(p[i], Q[i], G[i], A_i, b_i, h[i],
+    #                                       U_Q, U_S, R))
     single_time = time.time() - start
 
     start = time.time()
