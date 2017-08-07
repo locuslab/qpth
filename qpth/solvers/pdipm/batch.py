@@ -4,6 +4,7 @@ from enum import Enum
 
 from qpth.util import get_sizes, bdiag
 
+
 shown_btrifact_warning = False
 
 
@@ -349,16 +350,16 @@ def solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry):
 
     invQ_rx = rx.btrisolve(*Q_LU)
     if neq > 0:
-        h = torch.cat((invQ_rx.unsqueeze(1).bmm(A.transpose(1, 2)) - ry,
-                       invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)) + rs / d - rz), 2).squeeze(1)
+        h = torch.cat((invQ_rx.unsqueeze(1).bmm(A.transpose(1, 2)).squeeze(1) - ry,
+                       invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)).squeeze(1) + rs / d - rz), 1)
     else:
-        h = (invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)) + rs / d - rz).squeeze(1)
+        h = invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)).squeeze(1) + rs / d - rz
 
     w = -(h.btrisolve(*S_LU))
 
-    g1 = -rx - w[:, neq:].unsqueeze(1).bmm(G)
+    g1 = -rx - w[:, neq:].unsqueeze(1).bmm(G).squeeze(1)
     if neq > 0:
-        g1 -= w[:, :neq].unsqueeze(1).bmm(A)
+        g1 -= w[:, :neq].unsqueeze(1).bmm(A).squeeze(1)
     g2 = -rs - w[:, neq:]
 
     dx = g1.btrisolve(*Q_LU)

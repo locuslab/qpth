@@ -66,8 +66,9 @@ def get_grads(nBatch=1, nz=10, neq=1, nineq=3, Qscale=1.,
 
 
 def get_grads_torch(Q, p, G, h, A, b, truez):
-    Q, p, G, h, A, b, truez = [torch.DoubleTensor(x) for x in
-                               [Q, p, G, h, A, b, truez]]
+    Q, p, G, h, A, b, truez = [
+        torch.DoubleTensor(x) if len(x) > 0 else torch.DoubleTensor()
+        for x in [Q, p, G, h, A, b, truez]]
     if cuda:
         Q, p, G, h, A, b, truez = [x.cuda() for x in [Q, p, G, h, A, b, truez]]
 
