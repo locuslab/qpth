@@ -134,7 +134,15 @@ class QPFunction(Function):
         # neq, nineq, nz = self.neq, self.nineq, self.nz
         neq, nineq = self.neq, self.nineq
 
-        d = self.lams / self.slacks
+
+        if self.solver == QPSolvers.CVXPY:
+            self.Q_LU, self.S_LU, self.R = pdipm_b.pre_factor_kkt(Q, G, A)
+
+        # Clamp here to avoid issues coming up when the slacks are too small.
+        # TODO: A better fix would be to get lams and slacks from the
+        # solver that don't have this issue.
+        d = torch.clamp(self.lams, min=1e-8) / torch.clamp(self.slacks, min=1e-8)
+
         pdipm_b.factor_kkt(self.S_LU, self.R, d)
         dx, _, dlam, dnu = pdipm_b.solve_kkt(
             self.Q_LU, d, G, A, self.S_LU,
