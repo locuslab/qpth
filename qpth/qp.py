@@ -169,6 +169,8 @@ class QPFunction(Function):
         dQs = 0.5 * (bger(dx, zhats) + bger(zhats, dx))
         if Q_e:
             dQs = dQs.mean(0).squeeze(0)
+        if p_e:
+            dps = dps.mean(0).squeeze(0)
 
         grads = (dQs, dps, dGs, dhs, dAs, dbs)
 
