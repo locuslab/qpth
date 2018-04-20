@@ -83,7 +83,7 @@ class QPFunction(Function):
         b, _ = expandParam(b_, nBatch, 2)
 
         _, nineq, nz = G.size()
-        neq = A.size(1) if A.ndimension() > 0 else 0
+        neq = A.size(1) if A.nelement() > 0 else 0
         assert(neq > 0 or nineq > 0)
         self.neq, self.nineq, self.nz = neq, nineq, nz
 

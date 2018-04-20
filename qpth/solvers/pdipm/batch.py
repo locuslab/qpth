@@ -229,8 +229,10 @@ def unpack_kkt(v, nz, nineq, neq):
 
 
 def kkt_resid_reg(Q_tilde, D_tilde, G, A, eps, dx, ds, dz, dy, rx, rs, rz, ry):
-    dx, ds, dz, dy = [x.unsqueeze(2) if x is not None else None for x in [
-        dx, ds, dz, dy]]
+    dx, ds, dz, dy, rx, rs, rz, ry = [
+        x.unsqueeze(2) if x is not None else None for x in
+        [dx, ds, dz, dy, rx, rs, rz, ry]
+    ]
     resx = Q_tilde.bmm(dx) + G.transpose(1, 2).bmm(dz) + rx
     if dy is not None:
         resx += A.transpose(1, 2).bmm(dy)
@@ -255,7 +257,7 @@ def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry, niter=1):
     res = kkt_resid_reg(Q, D, G, A, eps,
                         dx, ds, dz, dy, rx, rs, rz, ry)
     resx, ress, resz, resy = res
-    res = torch.cat(resx)
+    res = resx
     for k in range(niter):
         ddx, dds, ddz, ddy = factor_solve_kkt_reg(Q_tilde, D_tilde, G, A, -resx, -ress, -resz,
                                                   -resy if resy is not None else None,
@@ -265,7 +267,8 @@ def solve_kkt_ir(Q, D, G, A, rx, rs, rz, ry, niter=1):
         res = kkt_resid_reg(Q, D, G, A, eps,
                             dx, ds, dz, dy, rx, rs, rz, ry)
         resx, ress, resz, resy = res
-        res = torch.cat(resx)
+        # res = torch.cat(resx)
+        res = resx
 
     return dx, ds, dz, dy
 
@@ -440,7 +443,7 @@ def factor_kkt(S_LU, R, d):
         factor_kkt_eye = torch.eye(nineq).repeat(
             nBatch, 1, 1).type_as(R).byte()
     T = R.clone()
-    T[factor_kkt_eye] += (1. / d).squeeze()
+    T[factor_kkt_eye] += (1. / d).squeeze().view(-1)
 
     T_LU = btrifact_hack(T)
 

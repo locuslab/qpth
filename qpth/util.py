@@ -26,7 +26,7 @@ def get_sizes(G, A=None):
     elif G.dim() == 3:
         nBatch, nineq, nz = G.size()
     if A is not None:
-        neq = A.size(1) if A.ndimension() > 0 else 0
+        neq = A.size(1) if A.nelement() > 0 else 0
     else:
         neq = None
     # nBatch = batchedTensor.size(0) if batchedTensor is not None else None
@@ -37,12 +37,12 @@ def bdiag(d):
     nBatch, sz = d.size()
     D = torch.zeros(nBatch, sz, sz).type_as(d)
     I = torch.eye(sz).repeat(nBatch, 1, 1).type_as(d).byte()
-    D[I] = d.squeeze()
+    D[I] = d.squeeze().view(-1)
     return D
 
 
 def expandParam(X, nBatch, nDim):
-    if X.ndimension() in (0, nDim):
+    if X.ndimension() in (0, nDim) or X.nelement() == 0:
         return X, False
     elif X.ndimension() == nDim - 1:
         return X.unsqueeze(0).expand(*([nBatch] + list(X.size()))), True
