@@ -48,9 +48,9 @@ deploy:
     tags: true
 matrix:
   fast_finish: true
-  include:
-    env: LINT_CHECK
-    python: '3.5'
-    addons: true
-    install: pip install flake8
-    script: flake8 --ignore=E402,E501
+  # include:
+  #   env: LINT_CHECK
+  #   python: '3.5'
+  #   addons: true
+  #   install: pip install flake8
+  #   script: flake8 --ignore=E402,E501
