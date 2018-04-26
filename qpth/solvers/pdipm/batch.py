@@ -140,7 +140,7 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
             if neq > 0:
                 I_neq = I.repeat(neq, 1).t()
                 best['y'][I_neq] = y[I_neq]
-        if nNotImproved == notImprovedLim or best['resids'].max() < eps or mu.min() > 1e100:
+        if nNotImproved == notImprovedLim or best['resids'].max() < eps or mu.min() > 1e32:
             if best['resids'].max() > 1. and verbose >= 0:
                 print(INACC_ERR)
             return best['x'], best['y'], best['z'], best['s']
