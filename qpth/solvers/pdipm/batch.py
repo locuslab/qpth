@@ -175,7 +175,7 @@ def forward(Q, p, G, h, A, b, Q_LU, S_LU, R, eps=1e-12, verbose=0, notImprovedLi
         rx = torch.zeros(nBatch, nz).type_as(Q)
         rs = ((-mu * sig).repeat(nineq, 1).t() + ds_aff * dz_aff) / s
         rz = torch.zeros(nBatch, nineq).type_as(Q)
-        ry = torch.zeros(nBatch, neq).type_as(Q)
+        ry = torch.zeros(nBatch, neq).type_as(Q) if neq > 0 else torch.Tensor()
 
         if solver == KKTSolvers.LU_FULL:
             D = bdiag(d)

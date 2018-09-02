@@ -148,29 +148,29 @@ class QPFunction(Function):
             self.Q_LU, d, G, A, self.S_LU,
             dl_dzhat, torch.zeros(nBatch, nineq).type_as(G),
             torch.zeros(nBatch, nineq).type_as(G),
-            torch.zeros(nBatch, neq).type_as(G))
+            torch.zeros(nBatch, neq).type_as(G) if neq > 0 else torch.Tensor())
 
         dps = dx
         dGs = bger(dlam, zhats) + bger(self.lams, dx)
         if G_e:
-            dGs = dGs.mean(0).squeeze(0)
+            dGs = dGs.mean(0)
         dhs = -dlam
         if h_e:
-            dhs = dhs.mean(0).squeeze(0)
+            dhs = dhs.mean(0)
         if neq > 0:
             dAs = bger(dnu, zhats) + bger(self.nus, dx)
             dbs = -dnu
             if A_e:
-                dAs = dAs.mean(0).squeeze(0)
+                dAs = dAs.mean(0)
             if b_e:
-                dbs = dbs.mean(0).squeeze(0)
+                dbs = dbs.mean(0)
         else:
             dAs, dbs = None, None
         dQs = 0.5 * (bger(dx, zhats) + bger(zhats, dx))
         if Q_e:
-            dQs = dQs.mean(0).squeeze(0)
+            dQs = dQs.mean(0)
         if p_e:
-            dps = dps.mean(0).squeeze(0)
+            dps = dps.mean(0)
 
         grads = (dQs, dps, dGs, dhs, dAs, dbs)
 
