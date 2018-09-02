@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='qpth',
-    version='0.0.12',
+    version='0.0.13',
     description="A fast and differentiable QP solver for PyTorch.",
     author='Brandon Amos',
     author_email='bamos@cs.cmu.edu',
