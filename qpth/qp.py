@@ -96,7 +96,8 @@ class QPFunction(Function):
             vals = torch.Tensor(nBatch).type_as(Q)
             zhats = torch.Tensor(nBatch, self.nz).type_as(Q)
             lams = torch.Tensor(nBatch, self.nineq).type_as(Q)
-            nus = torch.Tensor(nBatch, self.neq).type_as(Q)
+            nus = torch.Tensor(nBatch, self.neq).type_as(Q) \
+                if self.neq > 0 else torch.Tensor()
             slacks = torch.Tensor(nBatch, self.nineq).type_as(Q)
             for i in range(nBatch):
                 Ai, bi = (A[i], b[i]) if neq > 0 else (None, None)
