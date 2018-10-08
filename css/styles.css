@@ -12,7 +12,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color:#232323;
+    color:#4A66AC;
   margin:36px 0 10px;
 }
 
@@ -47,7 +47,7 @@ h4, h5, h6 {
 }
 
 a {
-  color:#C30000;
+    color:#4A66AC;
   text-decoration:none;
 }
 
@@ -215,14 +215,14 @@ header li {
   margin-bottom: 12px;
   line-height: 1em;
   padding: 6px 6px 6px 7px;
-  background: #c30000;
+  background: #4A66AC;
   border-radius:4px;
   border:1px solid #555;
 }
 
-header li:hover {
-  background: #dd0000;
-}
+/* header li:hover { */
+/*   background: #dd0000; */
+/* } */
 
 a.buttons {
   color: #fff;
@@ -278,7 +278,7 @@ footer {
     margin:0 84px 0 50px;
     padding:0;
   }
-
+ 
   header {
     padding-right:320px;
   }
