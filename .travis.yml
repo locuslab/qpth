@@ -28,8 +28,9 @@ install:
   pip
 - conda install -y numpy mkl setuptools cmake gcc cffi
 - conda install -y pytorch torchvision -c pytorch
+- conda install cvxpy -c cvxgrp
 - source activate test-environment
-- pip install numdifftools cvxpy block
+- pip install numdifftools block
 - python setup.py install
 script:
 - nosetests -v -d test.py
