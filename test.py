@@ -13,6 +13,7 @@ from torch.autograd import Variable
 import numpy as np
 import numpy.random as npr
 import numpy.testing as npt
+from numpy.testing import decorators
 np.set_printoptions(precision=6)
 
 import numdifftools as nd
