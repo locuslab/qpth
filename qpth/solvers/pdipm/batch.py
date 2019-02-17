@@ -27,7 +27,7 @@ to get a version that disables pivoting on the GPU.
 
 INACC_ERR = """
 --------
-qpth warning: Returning an inaccurate and potentially incorrect solutino.
+qpth warning: Returning an inaccurate and potentially incorrect solution.
 
 Some residual is large.
 Your problem may be infeasible or difficult.
