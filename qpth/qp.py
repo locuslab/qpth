@@ -17,12 +17,14 @@ class QPSolvers(Enum):
 
 class QPFunction(Function):
     def __init__(self, eps=1e-12, verbose=0, notImprovedLim=3,
-                 maxIter=20, solver=QPSolvers.PDIPM_BATCHED):
+                 maxIter=20, solver=QPSolvers.PDIPM_BATCHED,
+                 check_Q_spd=True):
         self.eps = eps
         self.verbose = verbose
         self.notImprovedLim = notImprovedLim
         self.maxIter = maxIter
         self.solver = solver
+        self.check_Q_spd = check_Q_spd
 
     def forward(self, Q_, p_, G_, h_, A_, b_):
         """Solve a batch of QPs.
@@ -81,6 +83,12 @@ class QPFunction(Function):
         h, _ = expandParam(h_, nBatch, 2)
         A, _ = expandParam(A_, nBatch, 3)
         b, _ = expandParam(b_, nBatch, 2)
+
+        if self.check_Q_spd:
+            for i in range(nBatch):
+                e, _ = torch.eig(Q[i])
+                if not torch.all(e[:,0] > 0):
+                    raise RuntimeError('Q is not SPD.')
 
         _, nineq, nz = G.size()
         neq = A.size(1) if A.nelement() > 0 else 0
@@ -172,6 +180,7 @@ class QPFunction(Function):
             dQs = dQs.mean(0)
         if p_e:
             dps = dps.mean(0)
+
 
         grads = (dQs, dps, dGs, dhs, dAs, dbs)
 
