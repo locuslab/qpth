@@ -8,12 +8,14 @@ from qpth.util import get_sizes, bdiag
 def lu_hack(x):
     data, pivots = x.lu(pivot=not x.is_cuda)
     if x.is_cuda:
-        if x.ndimension() == 1:
-            pivots = torch.arange(1, x.size(0)).int().cuda()
-        else:
+        if x.ndimension() == 2:
+            pivots = torch.arange(1, 1+x.size(0)).int().cuda()
+        elif x.ndimension() == 3:
             pivots = torch.arange(
-                1, x.size(1),
+                1, 1+x.size(1),
             ).unsqueeze(0).repeat(x.size(0), 1).int().cuda()
+        else:
+            assert False
     return (data, pivots)
 
 
