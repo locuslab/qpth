@@ -13,7 +13,7 @@ from torch.autograd import Variable
 import numpy as np
 import numpy.random as npr
 import numpy.testing as npt
-from numpy.testing import decorators
+from numpy.testing import dec
 np.set_printoptions(precision=6)
 
 import numdifftools as nd
@@ -247,7 +247,7 @@ def test_ir_kkt_solver():
     npt.assert_allclose(dy.numpy(), dy_.numpy(), rtol=RTOL, atol=ATOL)
 
 
-@npt.decorators.skipif(
+@npt.dec.skipif(
     not torch.cuda.is_available() or not hasattr(torch, 'spbqrfactsolve'))
 def test_sparse_forward():
     torch.manual_seed(0)
@@ -300,7 +300,7 @@ def test_sparse_forward():
                         xhats_qpf.cpu().numpy(), rtol=RTOL, atol=ATOL)
 
 
-@npt.decorators.skipif(
+@npt.dec.skipif(
     not torch.cuda.is_available() or not hasattr(torch, 'spbqrfactsolve'))
 def test_sparse_backward():
     torch.manual_seed(0)
