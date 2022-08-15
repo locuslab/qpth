@@ -7,11 +7,11 @@ def forward_single_np(Q, p, G, h, A, b):
 
     z_ = cp.Variable(nz)
 
-    obj = cp.Minimize(0.5 * cp.quad_form(z_, Q) + p.T * z_)
-    eqCon = A * z_ == b if neq > 0 else None
+    obj = cp.Minimize(0.5 * cp.quad_form(z_, Q) + p.T @ z_)
+    eqCon = A @ z_ == b if neq > 0 else None
     if nineq > 0:
         slacks = cp.Variable(nineq)
-        ineqCon = G * z_ + slacks == h
+        ineqCon = G @ z_ + slacks == h
         slacksCon = slacks >= 0
     else:
         ineqCon = slacks = slacksCon = None
