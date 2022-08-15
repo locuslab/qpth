@@ -80,7 +80,7 @@ def QPFunction(eps=1e-12, verbose=0, notImprovedLim=3,
 
             if check_Q_spd:
                 for i in range(nBatch):
-                    e, _ = torch.eig(Q[i])
+                    e = torch.linalg.eigvals(Q[i])
                     if not torch.all(e[:,0] > 0):
                         raise RuntimeError('Q is not SPD.')
 
