@@ -12,5 +12,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'numpy>=1,<2',
+        'cvxpy>=1.1.0'
     ]
 )
