@@ -80,8 +80,9 @@ def QPFunction(eps=1e-12, verbose=0, notImprovedLim=3,
 
             if check_Q_spd:
                 for i in range(nBatch):
-                    e = torch.linalg.eigvals(Q[i])
-                    if not torch.all(e.real > 0):
+                    try:
+                        torch.linalg.cholesky(Q)
+                    except:
                         raise RuntimeError('Q is not SPD.')
 
             _, nineq, nz = G.size()
