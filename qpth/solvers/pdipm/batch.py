@@ -6,7 +6,8 @@ from qpth.util import get_sizes, bdiag
 
 
 def lu_hack(x):
-    data, pivots = x.lu(pivot=not x.is_cuda)
+    data, pivots = torch.linalg.lu_factor(x, pivot=not x.is_cuda)
+
     if x.is_cuda:
         if x.ndimension() == 2:
             pivots = torch.arange(1, 1+x.size(0)).int().cuda()
@@ -290,16 +291,16 @@ def factor_solve_kkt_reg(Q_tilde, D, G, A, rx, rs, rz, ry, eps):
 
     H_LU = lu_hack(H_)
 
-    invH_A_ = A_.transpose(1, 2).lu_solve(*H_LU)
-    invH_g_ = g_.unsqueeze(2).lu_solve(*H_LU).squeeze(2)
+    invH_A_ = torch.linalg.lu_solve(*H_LU, A_.transpose(1, 2))
+    invH_g_ = torch.linalg.lu_solve(*H_LU, g_.unsqueeze(2)).squeeze(2)
 
     S_ = torch.bmm(A_, invH_A_)
     S_ -= eps * torch.eye(neq + nineq).type_as(Q_tilde).repeat(nBatch, 1, 1)
     S_LU = lu_hack(S_)
     t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze(1) - h_
-    w_ = -t_.unsqueeze(2).lu_solve(*S_LU).squeeze(2)
+    w_ = torch.linalg.lu_solve(*S_LU, -t_.unsqueeze(2)).squeeze(2)
     t_ = -g_ - w_.unsqueeze(1).bmm(A_).squeeze()
-    v_ = t_.unsqueeze(2).lu_solve(*H_LU).squeeze(2)
+    v_ = torch.linalg.lu_solve(*H_LU, t_.unsqueeze(2)).squeeze(2)
 
     dx = v_[:, :nz]
     ds = v_[:, nz:]
@@ -327,15 +328,15 @@ def factor_solve_kkt(Q, D, G, A, rx, rs, rz, ry):
 
     H_LU = lu_hack(H_)
 
-    invH_A_ = A_.transpose(1, 2).lu_solve(*H_LU)
-    invH_g_ = g_.unsqueeze(2).lu_solve(*H_LU).squeeze(2)
+    invH_A_ = torch.linalg.lu_solve(*H_LU, A_.transpose(1, 2))
+    invH_g_ = torch.linalg.lu_solve(*H_LU, g_.unsqueeze(2)).squeeze(2)
 
     S_ = torch.bmm(A_, invH_A_)
     S_LU = lu_hack(S_)
     t_ = torch.bmm(invH_g_.unsqueeze(1), A_.transpose(1, 2)).squeeze(1) - h_
-    w_ = -t_.unsqueeze(2).lu_solve(*S_LU).squeeze(2)
+    w_ = torch.linalg.lu_solve(*S_LU, -t_.unsqueeze(2)).squeeze(2)
     t_ = -g_ - w_.unsqueeze(1).bmm(A_).squeeze()
-    v_ = t_.unsqueeze(2).lu_solve(*H_LU).squeeze(2)
+    v_ = torch.linalg.lu_solve(*H_LU, t_.unsqueeze(2)).squeeze(2)
 
     dx = v_[:, :nz]
     ds = v_[:, nz:]
@@ -349,21 +350,21 @@ def solve_kkt(Q_LU, d, G, A, S_LU, rx, rs, rz, ry):
     """ Solve KKT equations for the affine step"""
     nineq, nz, neq, nBatch = get_sizes(G, A)
 
-    invQ_rx = rx.unsqueeze(2).lu_solve(*Q_LU).squeeze(2)
+    invQ_rx = torch.linalg.lu_solve(*Q_LU, rx.unsqueeze(2)).squeeze(2)
     if neq > 0:
         h = torch.cat((invQ_rx.unsqueeze(1).bmm(A.transpose(1, 2)).squeeze(1) - ry,
                        invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)).squeeze(1) + rs / d - rz), 1)
     else:
         h = invQ_rx.unsqueeze(1).bmm(G.transpose(1, 2)).squeeze(1) + rs / d - rz
 
-    w = -(h.unsqueeze(2).lu_solve(*S_LU)).squeeze(2)
+    w = torch.linalg.lu_solve(*S_LU, -h.unsqueeze(2)).squeeze(2)
 
     g1 = -rx - w[:, neq:].unsqueeze(1).bmm(G).squeeze(1)
     if neq > 0:
         g1 -= w[:, :neq].unsqueeze(1).bmm(A).squeeze(1)
     g2 = -rs - w[:, neq:]
 
-    dx = g1.unsqueeze(2).lu_solve(*Q_LU).squeeze(2)
+    dx = torch.linalg.lu_solve(*Q_LU, g1.unsqueeze(2)).squeeze(2)
     ds = g2 / d
     dz = w[:, neq:]
     dy = w[:, :neq] if neq > 0 else None
@@ -392,12 +393,14 @@ a non-zero diagonal.
     # See the 'Block LU factorization' part of our website
     # for more details.
 
-    G_invQ_GT = torch.bmm(G, G.transpose(1, 2).lu_solve(*Q_LU))
+    G_invQ_GT = torch.bmm(
+        G,
+        torch.linalg.lu_solve(*Q_LU, G.transpose(1, 2)))
     R = G_invQ_GT.clone()
     S_LU_pivots = torch.IntTensor(range(1, 1 + neq + nineq)).unsqueeze(0) \
         .repeat(nBatch, 1).type_as(Q).int()
     if neq > 0:
-        invQ_AT = A.transpose(1, 2).lu_solve(*Q_LU)
+        invQ_AT = torch.linalg.lu_solve(*Q_LU, A.transpose(1, 2))
         A_invQ_AT = torch.bmm(A, invQ_AT)
         G_invQ_AT = torch.bmm(G, invQ_AT)
 
@@ -406,10 +409,11 @@ a non-zero diagonal.
         P_A_invQ_AT = P_A_invQ_AT.type_as(A_invQ_AT)
 
         S_LU_11 = LU_A_invQ_AT[0]
-        U_A_invQ_AT_inv = (P_A_invQ_AT.bmm(L_A_invQ_AT)
-                           ).lu_solve(*LU_A_invQ_AT)
+        U_A_invQ_AT_inv = torch.linalg.lu_solve(
+            *LU_A_invQ_AT, P_A_invQ_AT.bmm(L_A_invQ_AT))
         S_LU_21 = G_invQ_AT.bmm(U_A_invQ_AT_inv)
-        T = G_invQ_AT.transpose(1, 2).lu_solve(*LU_A_invQ_AT)
+        T = torch.linalg.lu_solve(
+            *LU_A_invQ_AT, G_invQ_AT.transpose(1, 2))
         S_LU_12 = U_A_invQ_AT.bmm(T)
         S_LU_22 = torch.zeros(nBatch, nineq, nineq).type_as(Q)
         S_LU_data = torch.cat((torch.cat((S_LU_11, S_LU_12), 2),
