@@ -10,11 +10,11 @@ def lu_hack(x):
 
     if x.is_cuda:
         if x.ndimension() == 2:
-            pivots = torch.arange(1, 1+x.size(0)).int().cuda()
+            pivots = torch.arange(1, 1+x.size(0)).int().to(x.device)
         elif x.ndimension() == 3:
             pivots = torch.arange(
                 1, 1+x.size(1),
-            ).unsqueeze(0).repeat(x.size(0), 1).int().cuda()
+            ).unsqueeze(0).repeat(x.size(0), 1).int().to(x.device)
         else:
             assert False
     return (data, pivots)
